@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -44,10 +46,27 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    
-    // Librería ZXing para generar códigos QR
+
+    // ZXing para generar códigos QR
     implementation(libs.zxing.core)
-    
-    // Librería ZXing para generar códigos QR
-    implementation(libs.zxing.core)
+
+    // DataStore para persistencia de estado de registro
+    implementation(libs.androidx.datastore.preferences)
+
+    // Encriptación AES con Android Keystore
+    implementation(libs.androidx.security.crypto)
+
+    // Permisos BLE/Location en Compose
+    implementation(libs.accompanist.permissions)
+
+    // Navegación entre pantallas
+    implementation(libs.androidx.navigation.compose)
+
+    // Íconos extendidos de Material (DirectionsCar, LockOpen, Bluetooth, etc.)
+    implementation(libs.androidx.compose.material.icons.extended)
+
+    // Hilt
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
 }
