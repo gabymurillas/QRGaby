@@ -1,0 +1,73 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.2.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :app
+WARNING: The option setting 'android.disallowKotlinSourceSets=false' is experimental.
+The current default is 'true'.
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:generateDebugRFile UP-TO-DATE
+> Task :app:kspDebugKotlin UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:mergeDebugJavaResource UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :app:hiltSyncDebug UP-TO-DATE
+> Task :app:hiltAggregateDepsDebug UP-TO-DATE
+
+> Task :app:hiltJavaCompileDebug
+C:\Users\usuario\AndroidStudioProjects\QRGaby\app\build\generated\hilt\component_sources\debug\com\example\qr_prueba_gaby\QRGabyApplication_HiltComponents.java:139: error: [Dagger/DuplicateBindings] com.example.qr_prueba_gaby.data.UserDataStore is bound multiple times:
+  public abstract static class SingletonC implements QRGabyApplication_GeneratedInjector,
+                         ^
+          @Provides @Singleton com.example.qr_prueba_gaby.data.UserDataStore com.example.qr_prueba_gaby.data.di.DataModule.provideUserDataStore(@dagger.hilt.android.qualifiers.ApplicationContext android.content.Context)
+          @Provides @Singleton com.example.qr_prueba_gaby.data.UserDataStore com.example.qr_prueba_gaby.di.DataModule.provideUserDataStore(@dagger.hilt.android.qualifiers.ApplicationContext android.content.Context)
+      com.example.qr_prueba_gaby.data.UserDataStore is injected at
+          [com.example.qr_prueba_gaby.QRGabyApplication_HiltComponents.ViewModelC] com.example.qr_prueba_gaby.ui.viewmodel.AppViewModel(dataStore, …)
+      com.example.qr_prueba_gaby.ui.viewmodel.AppViewModel is injected at
+          [com.example.qr_prueba_gaby.QRGabyApplication_HiltComponents.ViewModelC] com.example.qr_prueba_gaby.ui.viewmodel.AppViewModel_HiltModules.BindsModule.binds(arg0)
+      @dagger.hilt.android.internal.lifecycle.HiltViewModelMap java.util.Map<java.lang.Class<?>,javax.inject.Provider<androidx.lifecycle.ViewModel>> is requested at
+          [com.example.qr_prueba_gaby.QRGabyApplication_HiltComponents.ViewModelC] dagger.hilt.android.internal.lifecycle.HiltViewModelFactory.ViewModelFactoriesEntryPoint.getHiltViewModelMap() [com.example.qr_prueba_gaby.QRGabyApplication_HiltComponents.SingletonC → com.example.qr_prueba_gaby.QRGabyApplication_HiltComponents.ActivityRetainedC → com.example.qr_prueba_gaby.QRGabyApplication_HiltComponents.ViewModelC]
+1 error
+
+> Task :app:hiltJavaCompileDebug FAILED
+
+[Incubating] Problems report is available at: file:///C:/Users/usuario/AndroidStudioProjects/QRGaby/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:hiltJavaCompileDebug'.
+> Compilation failed; see the compiler output below.
+  C:\Users\usuario\AndroidStudioProjects\QRGaby\app\build\generated\hilt\component_sources\debug\com\example\qr_prueba_gaby\QRGabyApplication_HiltComponents.java:139: error: [Dagger/DuplicateBindings] com.example.qr_prueba_gaby.data.UserDataStore is bound multiple times:
+    public abstract static class SingletonC implements QRGabyApplication_GeneratedInjector,
+                           ^
+            @Provides @Singleton com.example.qr_prueba_gaby.data.UserDataStore com.example.qr_prueba_gaby.data.di.DataModule.provideUserDataStore(@dagger.hilt.android.qualifiers.ApplicationContext android.content.Context)
+            @Provides @Singleton com.example.qr_prueba_gaby.data.UserDataStore com.example.qr_prueba_gaby.di.DataModule.provideUserDataStore(@dagger.hilt.android.qualifiers.ApplicationContext android.content.Context)
+        com.example.qr_prueba_gaby.data.UserDataStore is injected at
+            [com.example.qr_prueba_gaby.QRGabyApplication_HiltComponents.ViewModelC] com.example.qr_prueba_gaby.ui.viewmodel.AppViewModel(dataStore, …)
+        com.example.qr_prueba_gaby.ui.viewmodel.AppViewModel is injected at
+            [com.example.qr_prueba_gaby.QRGabyApplication_HiltComponents.ViewModelC] com.example.qr_prueba_gaby.ui.viewmodel.AppViewModel_HiltModules.BindsModule.binds(arg0)
+        @dagger.hilt.android.internal.lifecycle.HiltViewModelMap java.util.Map<java.lang.Class<?>,javax.inject.Provider<androidx.lifecycle.ViewModel>> is requested at
+            [com.example.qr_prueba_gaby.QRGabyApplication_HiltComponents.ViewModelC] dagger.hilt.android.internal.lifecycle.HiltViewModelFactory.ViewModelFactoriesEntryPoint.getHiltViewModelMap() [com.example.qr_prueba_gaby.QRGabyApplication_HiltComponents.SingletonC → com.example.qr_prueba_gaby.QRGabyApplication_HiltComponents.ActivityRetainedC → com.example.qr_prueba_gaby.QRGabyApplication_HiltComponents.ViewModelC]
+  1 error
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to generate a Build Scan (powered by Develocity).
+
+BUILD FAILED in 14s
+19 actionable tasks: 1 executed, 18 up-to-date
