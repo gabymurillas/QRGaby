@@ -21,12 +21,18 @@ class UserDataStore(private val context: Context) {
 
     companion object {
         private val KEY_IS_REGISTERED = booleanPreferencesKey("is_registered")
+        private val KEY_IS_ACTIVATED = booleanPreferencesKey("is_activated")
         private val KEY_USER_JSON = stringPreferencesKey("user_json")
     }
 
     /** Flow que emite true si el usuario ya está registrado y activo. */
     val isRegisteredFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_IS_REGISTERED] ?: false
+    }
+
+    /** Flow que emite true si el dispositivo ha sido activado vía BLE. */
+    val isActivatedFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_IS_ACTIVATED] ?: false
     }
 
     /** Flow que emite los datos del usuario, o null si no está registrado. */
@@ -45,6 +51,13 @@ class UserDataStore(private val context: Context) {
     suspend fun setRegistered(registered: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[KEY_IS_REGISTERED] = registered
+        }
+    }
+
+    /** Marca el dispositivo como activado/desactivado vía BLE. */
+    suspend fun setActivated(activated: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_IS_ACTIVATED] = activated
         }
     }
 

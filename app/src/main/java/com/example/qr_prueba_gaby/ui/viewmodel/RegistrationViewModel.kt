@@ -19,6 +19,7 @@ import javax.inject.Inject
 data class RegistrationState(
     val name: String = "",
     val cedula: String = "",
+    val phone: String = "",
     val plates: List<String> = listOf(""),
     val isSaving: Boolean = false,
     val error: String? = null
@@ -38,6 +39,10 @@ class RegistrationViewModel @Inject constructor(
 
     fun onCedulaChange(newCedula: String) {
         _state.update { it.copy(cedula = newCedula) }
+    }
+
+    fun onPhoneChange(newPhone: String) {
+        _state.update { it.copy(phone = newPhone) }
     }
 
     fun onPlateChange(index: Int, newPlate: String) {
@@ -82,6 +87,7 @@ class RegistrationViewModel @Inject constructor(
                 val userData = UserData(
                     u = currentState.name,
                     c = currentState.cedula,
+                    t = currentState.phone,
                     p = currentState.plates.filter { it.isNotBlank() },
                     aid = encryptedAid
                 )

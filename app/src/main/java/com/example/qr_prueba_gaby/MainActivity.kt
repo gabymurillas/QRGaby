@@ -98,6 +98,11 @@ private fun AppNavigation() {
                     navController.navigate(ROUTE_PERMISSIONS) {
                         popUpTo(ROUTE_QR_SYNC) { inclusive = true }
                     }
+                },
+                onReset = {
+                    navController.navigate(ROUTE_REGISTRATION) {
+                        popUpTo(ROUTE_QR_SYNC) { inclusive = true }
+                    }
                 }
             )
         }
@@ -113,9 +118,16 @@ private fun AppNavigation() {
             )
         }
 
-        // ── Pantalla 3: Panel principal ──
+        // ── Pantalla 4: Dashboard Principal ──
         composable(ROUTE_MAIN) {
-            MainScreen(viewModel = viewModel)
+            MainScreen(
+                viewModel = viewModel,
+                onLogout = {
+                    navController.navigate(ROUTE_REGISTRATION) {
+                        popUpTo(ROUTE_MAIN) { inclusive = true }
+                    }
+                }
+            )
         }
     }
 }

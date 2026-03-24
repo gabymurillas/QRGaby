@@ -13,8 +13,12 @@ import android.os.ParcelUuid
 import android.provider.Settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.qr_prueba_gaby.data.BlePeripheralManager
 import com.example.qr_prueba_gaby.data.CryptoManager
 import com.example.qr_prueba_gaby.data.UserDataStore
+import com.example.qr_prueba_gaby.data.api.ApiService
+import com.example.qr_prueba_gaby.data.api.OdooRequest
+import com.example.qr_prueba_gaby.data.api.SyncParams
 import com.example.qr_prueba_gaby.data.model.UserData
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
@@ -40,6 +44,7 @@ enum class BleState { SEARCHING, IN_RANGE, CONNECTING, SENT, ERROR }
 @HiltViewModel
 class AppViewModel @Inject constructor(
     private val dataStore: UserDataStore,
+    private val apiService: ApiService,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -50,6 +55,9 @@ class AppViewModel @Inject constructor(
     private val _cedula = MutableStateFlow("")
     val cedula: StateFlow<String> = _cedula.asStateFlow()
 
+    private val _telefono = MutableStateFlow("")
+    val telefono: StateFlow<String> = _telefono.asStateFlow()
+
     private val _plates = MutableStateFlow(listOf(""))
     val plates: StateFlow<List<String>> = _plates.asStateFlow()
 
@@ -59,6 +67,9 @@ class AppViewModel @Inject constructor(
     private val _registrationError = MutableStateFlow<String?>(null)
     val registrationError: StateFlow<String?> = _registrationError.asStateFlow()
 
+    private val _isValidating = MutableStateFlow(false)
+    val isValidating: StateFlow<Boolean> = _isValidating.asStateFlow()
+
     // ──── Estado QR ────
     private val _qrBitmap = MutableStateFlow<Bitmap?>(null)
     val qrBitmap: StateFlow<Bitmap?> = _qrBitmap.asStateFlow()
@@ -66,8 +77,14 @@ class AppViewModel @Inject constructor(
     private val _encryptedAndroidId = MutableStateFlow("")
     val encryptedAndroidId: StateFlow<String> = _encryptedAndroidId.asStateFlow()
 
+    private val _decryptedAndroidId = MutableStateFlow<String?>(null)
+    val decryptedAndroidId: StateFlow<String?> = _decryptedAndroidId.asStateFlow()
+
     // ──── Estado Activación (con manejo de carga inicial null para evitar parpadeo) ────
     val isRegisteredFlow: StateFlow<Boolean?> = dataStore.isRegisteredFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val isActivatedFlow: StateFlow<Boolean?> = dataStore.isActivatedFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val userDataFlow = dataStore.userDataFlow
@@ -82,8 +99,22 @@ class AppViewModel @Inject constructor(
     private var scanJob: Job? = null
     private var scanCallback: ScanCallback? = null
 
+    // Peripheral de activación
+    private val blePeripheralManager: BlePeripheralManager by lazy {
+        BlePeripheralManager(context) { token ->
+            // Cuando recibimos el token de activación del Admin
+            activateUser()
+        }
+    }
+
     fun onNombreChange(value: String) { _nombre.value = value }
-    fun onCedulaChange(value: String) { _cedula.value = value.filter { it.isDigit() } }
+    fun onCedulaChange(newCedula: String) {
+        _cedula.value = newCedula.filter { it.isDigit() }
+    }
+
+    fun onTelefonoChange(newTelefono: String) {
+        _telefono.value = newTelefono.filter { it.isDigit() || it == '+' }
+    }
 
     fun onPlateChange(index: Int, value: String) {
         val updated = _plates.value.toMutableList()
@@ -105,32 +136,29 @@ class AppViewModel @Inject constructor(
 
     @SuppressLint("HardwareIds")
     fun generateKey(onSuccess: () -> Unit) {
-        val nombreVal = _nombre.value.trim()
-        val cedulaVal = _cedula.value.trim()
-        val plates = _plates.value.filter { it.isNotBlank() }
-
-        if (nombreVal.isBlank()) { _registrationError.value = "Ingresa tu nombre"; return }
-        if (cedulaVal.isBlank()) { _registrationError.value = "Ingresa tu cédula"; return }
-        if (plates.isEmpty()) { _registrationError.value = "Agrega al menos una placa"; return }
-        _registrationError.value = null
+        if (_nombre.value.isBlank() || _cedula.value.isBlank() || _telefono.value.isBlank()) {
+            _registrationError.value = "Por favor, completa todos los campos personales."
+            return
+        }
+        if (_plates.value.all { it.isBlank() }) {
+            _registrationError.value = "Debes registrar al menos un vehículo."
+            return
+        }
 
         viewModelScope.launch {
             _isGenerating.value = true
+            _registrationError.value = null
             try {
-                val androidId = Settings.Secure.getString(
-                    context.contentResolver, Settings.Secure.ANDROID_ID
-                ) ?: "unknown"
-
-                val encrypted = withContext(Dispatchers.Default) {
-                    CryptoManager.encrypt(androidId)
-                }
-                _encryptedAndroidId.value = encrypted
+                val androidId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+                val aidEncrypted = CryptoManager.encrypt(androidId)
+                _encryptedAndroidId.value = aidEncrypted
 
                 val userData = UserData(
-                    u = nombreVal,
-                    c = cedulaVal,
-                    p = plates,
-                    aid = encrypted
+                    u = _nombre.value,
+                    c = _cedula.value,
+                    t = _telefono.value,
+                    p = _plates.value.filter { it.isNotBlank() },
+                    aid = aidEncrypted
                 )
 
                 val qr = withContext(Dispatchers.Default) {
@@ -148,10 +176,80 @@ class AppViewModel @Inject constructor(
         }
     }
 
+    fun showDecryptedId() {
+        viewModelScope.launch {
+            val encrypted = _encryptedAndroidId.value.ifBlank {
+                dataStore.userDataFlow.stateIn(viewModelScope).value?.aid ?: ""
+            }
+            if (encrypted.isNotBlank()) {
+                val decrypted = CryptoManager.decrypt(encrypted)
+                _decryptedAndroidId.value = decrypted
+                delay(60_000) // 60 segundos
+                _decryptedAndroidId.value = null
+            }
+        }
+    }
+
+    fun resetRegistration(onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            dataStore.clearAll()
+            // Limpiamos estados locales
+            _nombre.value = ""
+            _cedula.value = ""
+            _telefono.value = ""
+            _plates.value = listOf("")
+            _qrBitmap.value = null
+            _encryptedAndroidId.value = ""
+            onDone()
+        }
+    }
+
+    fun validateOnEndpoint(onSuccess: () -> Unit, onError: (String) -> Unit) {
+        if (_isValidating.value) return
+        
+        viewModelScope.launch {
+            _isValidating.value = true
+            try {
+                val userData = dataStore.userDataFlow.stateIn(viewModelScope).value ?: return@launch
+                
+                val params = SyncParams(
+                    nombre = userData.u,
+                    cedula = userData.c,
+                    telefono = userData.t,
+                    placas = userData.p.joinToString(","),
+                    android_id = userData.aid
+                )
+                
+                val response = apiService.syncVehicular(OdooRequest(params))
+                
+                if (response.isSuccessful && response.body()?.result?.status == "success") {
+                    activateUser()
+                    onSuccess()
+                } else {
+                    val errorMsg = response.body()?.result?.message ?: "Usuario no encontrado en el sistema."
+                    onError(errorMsg)
+                }
+            } catch (e: Exception) {
+                onError("Error de conexión: ${e.localizedMessage}")
+            } finally {
+                _isValidating.value = false
+            }
+        }
+    }
+
     fun activateUser() {
         viewModelScope.launch {
+            dataStore.setActivated(true)
             dataStore.setRegistered(true)
         }
+    }
+
+    fun startActivationPeripheral() {
+        blePeripheralManager.start()
+    }
+
+    fun stopActivationPeripheral() {
+        blePeripheralManager.stop()
     }
 
     @SuppressLint("MissingPermission")

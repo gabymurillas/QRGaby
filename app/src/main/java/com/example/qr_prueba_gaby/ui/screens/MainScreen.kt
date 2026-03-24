@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Search
@@ -31,7 +32,10 @@ import com.example.qr_prueba_gaby.ui.viewmodel.AppViewModel
 import com.example.qr_prueba_gaby.ui.viewmodel.BleState
 
 @Composable
-fun MainScreen(viewModel: AppViewModel) {
+fun MainScreen(
+    viewModel: AppViewModel,
+    onLogout: () -> Unit
+) {
     val context = LocalContext.current
     val bleState by viewModel.bleState.collectAsStateWithLifecycle(BleState.SEARCHING)
     val gateMessage by viewModel.gateMessage.collectAsStateWithLifecycle(null)
@@ -83,6 +87,21 @@ fun MainScreen(viewModel: AppViewModel) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
+                // ── Botón de Salida (Top Right) ──
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopEnd) {
+                    IconButton(
+                        onClick = { viewModel.resetRegistration { onLogout() } },
+                        modifier = Modifier.padding(top = 16.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ExitToApp,
+                            contentDescription = "Cerrar Sesión",
+                            tint = Color(0xFF8899AA)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
 
                 // ── Saludo ──
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {

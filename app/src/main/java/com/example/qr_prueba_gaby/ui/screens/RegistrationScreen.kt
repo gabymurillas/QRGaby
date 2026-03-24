@@ -29,6 +29,7 @@ import com.example.qr_prueba_gaby.ui.viewmodel.AppViewModel
 fun RegistrationScreen(viewModel: AppViewModel, context: Context, onNavigateToQr: () -> Unit) {
     val nombre by viewModel.nombre.collectAsState()
     val cedula by viewModel.cedula.collectAsState()
+    val telefono by viewModel.telefono.collectAsState()
     val plates by viewModel.plates.collectAsState()
     val isGenerating by viewModel.isGenerating.collectAsState()
     val error by viewModel.registrationError.collectAsState()
@@ -101,6 +102,13 @@ fun RegistrationScreen(viewModel: AppViewModel, context: Context, onNavigateToQr
                         label = "Cédula de Identidad",
                         placeholder = "Solo números",
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    AppTextField(
+                        value = telefono,
+                        onValueChange = { viewModel.onTelefonoChange(it) },
+                        label = "Número de Teléfono",
+                        placeholder = "Ej: +58 412...",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
                     )
                 }
             }
