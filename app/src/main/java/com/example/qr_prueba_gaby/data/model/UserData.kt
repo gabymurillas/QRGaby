@@ -12,7 +12,6 @@ package com.example.qr_prueba_gaby.data.model
 data class UserData(
     val u: String,   // nombre
     val c: String,   // cedula
-    val t: String,   // telefono
     val p: List<String>, // placas
     val aid: String  // android id encriptado
 ) {
@@ -22,22 +21,20 @@ data class UserData(
      */
     fun toJson(): String {
         val placasJson = p.joinToString(",") { "\"$it\"" }
-        return "{\"u\":\"$u\",\"c\":\"$c\",\"t\":\"$t\",\"p\":[$placasJson],\"aid\":\"$aid\"}"
+        return "{\"u\":\"$u\",\"c\":\"$c\",\"p\":[$placasJson],\"aid\":\"$aid\"}"
     }
 
     companion object {
         /**
          * Parsea el JSON compacto de vuelta a UserData.
-         * Implementación simple sin dependencia de librerías externas.
          */
         fun fromJson(json: String): UserData? {
             return try {
                 val u = extractValue(json, "u")
                 val c = extractValue(json, "c")
-                val t = extractValue(json, "t")
                 val aid = extractValue(json, "aid")
                 val p = extractList(json, "p")
-                UserData(u, c, t, p, aid)
+                UserData(u, c, p, aid)
             } catch (e: Exception) { null }
         }
 

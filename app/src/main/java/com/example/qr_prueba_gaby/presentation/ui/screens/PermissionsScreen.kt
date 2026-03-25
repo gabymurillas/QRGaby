@@ -1,4 +1,4 @@
-package com.example.qr_prueba_gaby.ui.screens
+package com.example.qr_prueba_gaby.presentation.ui.screens
 
 import android.os.Build
 import androidx.compose.foundation.background

@@ -1,24 +1,21 @@
-package com.example.qr_prueba_gaby.ui.viewmodel
+package com.example.qr_prueba_gaby.presentation.ui.viewmodels
 
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
-import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanFilter
-import android.bluetooth.le.ScanResult
-import android.bluetooth.le.ScanSettings
+import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.os.ParcelUuid
 import android.provider.Settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.qr_prueba_gaby.data.BlePeripheralManager
-import com.example.qr_prueba_gaby.data.CryptoManager
-import com.example.qr_prueba_gaby.data.UserDataStore
-import com.example.qr_prueba_gaby.data.api.ApiService
-import com.example.qr_prueba_gaby.data.api.OdooRequest
-import com.example.qr_prueba_gaby.data.api.SyncParams
+import com.example.qr_prueba_gaby.utils.CryptoManager
+import com.example.qr_prueba_gaby.data.pref.UserDataStore
+import com.example.qr_prueba_gaby.data.network.service.ApiService
+import com.example.qr_prueba_gaby.data.network.service.SyncParams
+import com.example.qr_prueba_gaby.data.network.service.OdooRequest
 import com.example.qr_prueba_gaby.data.model.UserData
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
@@ -34,12 +31,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import java.io.InputStream
+import java.io.OutputStream
+import java.util.UUID
 import javax.inject.Inject
 
-const val GATE_SERVICE_UUID = "0000ffe0-0000-1000-8000-00805f9b34fb"
-const val RSSI_THRESHOLD = -70
+const val TARGET_MAC = "E0:5A:1B:30:FD:42"
+val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
-enum class BleState { SEARCHING, IN_RANGE, CONNECTING, SENT, ERROR }
+enum class BleState { DISCONNECTED, CONNECTING, CONNECTED, SENT, ERROR }
 
 @HiltViewModel
 class AppViewModel @Inject constructor(
@@ -54,9 +55,6 @@ class AppViewModel @Inject constructor(
 
     private val _cedula = MutableStateFlow("")
     val cedula: StateFlow<String> = _cedula.asStateFlow()
-
-    private val _telefono = MutableStateFlow("")
-    val telefono: StateFlow<String> = _telefono.asStateFlow()
 
     private val _plates = MutableStateFlow(listOf(""))
     val plates: StateFlow<List<String>> = _plates.asStateFlow()
@@ -90,30 +88,15 @@ class AppViewModel @Inject constructor(
     val userDataFlow = dataStore.userDataFlow
 
     // ──── Estado BLE ────
-    private val _bleState = MutableStateFlow(BleState.SEARCHING)
+    private val _bleState = MutableStateFlow(BleState.DISCONNECTED)
     val bleState: StateFlow<BleState> = _bleState.asStateFlow()
 
     private val _gateMessage = MutableStateFlow<String?>(null)
     val gateMessage: StateFlow<String?> = _gateMessage.asStateFlow()
 
-    private var scanJob: Job? = null
-    private var scanCallback: ScanCallback? = null
-
-    // Peripheral de activación
-    private val blePeripheralManager: BlePeripheralManager by lazy {
-        BlePeripheralManager(context) { token ->
-            // Cuando recibimos el token de activación del Admin
-            activateUser()
-        }
-    }
-
     fun onNombreChange(value: String) { _nombre.value = value }
     fun onCedulaChange(newCedula: String) {
         _cedula.value = newCedula.filter { it.isDigit() }
-    }
-
-    fun onTelefonoChange(newTelefono: String) {
-        _telefono.value = newTelefono.filter { it.isDigit() || it == '+' }
     }
 
     fun onPlateChange(index: Int, value: String) {
@@ -136,7 +119,7 @@ class AppViewModel @Inject constructor(
 
     @SuppressLint("HardwareIds")
     fun generateKey(onSuccess: () -> Unit) {
-        if (_nombre.value.isBlank() || _cedula.value.isBlank() || _telefono.value.isBlank()) {
+        if (_nombre.value.isBlank() || _cedula.value.isBlank()) {
             _registrationError.value = "Por favor, completa todos los campos personales."
             return
         }
@@ -156,7 +139,6 @@ class AppViewModel @Inject constructor(
                 val userData = UserData(
                     u = _nombre.value,
                     c = _cedula.value,
-                    t = _telefono.value,
                     p = _plates.value.filter { it.isNotBlank() },
                     aid = aidEncrypted
                 )
@@ -196,7 +178,6 @@ class AppViewModel @Inject constructor(
             // Limpiamos estados locales
             _nombre.value = ""
             _cedula.value = ""
-            _telefono.value = ""
             _plates.value = listOf("")
             _qrBitmap.value = null
             _encryptedAndroidId.value = ""
@@ -212,23 +193,25 @@ class AppViewModel @Inject constructor(
             try {
                 val userData = dataStore.userDataFlow.stateIn(viewModelScope).value ?: return@launch
                 
-                val params = SyncParams(
-                    nombre = userData.u,
-                    cedula = userData.c,
-                    telefono = userData.t,
-                    placas = userData.p.joinToString(","),
-                    android_id = userData.aid
-                )
-                
-                val response = apiService.syncVehicular(OdooRequest(params))
+                val response = apiService.syncVehicular(_cedula.value)
                 
                 if (response.isSuccessful && response.body()?.result?.status == "success") {
                     activateUser()
                     onSuccess()
                 } else {
-                    val errorMsg = response.body()?.result?.message ?: "Usuario no encontrado en el sistema."
+                    val result = response.body()?.result
+                    val errorMsg = when {
+                        response.code() == 401 -> "Error de autenticación con el servidor Odoo."
+                        response.code() == 404 -> "Endpoint de sincronización no encontrado."
+                        result?.status == "error" -> result.message ?: "Acceso denegado por el sistema."
+                        else -> "El servidor no autorizó el acceso. Verifica tus datos."
+                    }
                     onError(errorMsg)
                 }
+            } catch (e: java.net.ConnectException) {
+                onError("No se pudo conectar al servidor local 172.17.2.178. ¿Estás en la misma red?")
+            } catch (e: java.net.SocketTimeoutException) {
+                onError("El tiempo de espera con el servidor ha expirado.")
             } catch (e: Exception) {
                 onError("Error de conexión: ${e.localizedMessage}")
             } finally {
@@ -244,85 +227,100 @@ class AppViewModel @Inject constructor(
         }
     }
 
-    fun startActivationPeripheral() {
-        blePeripheralManager.start()
-    }
-
-    fun stopActivationPeripheral() {
-        blePeripheralManager.stop()
-    }
-
-    @SuppressLint("MissingPermission")
+    // Ya no hacemos escaneo automático, es a demanda
     fun startBleScan() {
-        if (_bleState.value == BleState.IN_RANGE) return
+        _bleState.value = BleState.DISCONNECTED
+    }
 
-        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        val adapter = bluetoothManager.adapter ?: run {
-            _bleState.value = BleState.ERROR
-            return
-        }
-        if (!adapter.isEnabled) {
-            _bleState.value = BleState.ERROR
-            return
-        }
-
-        val scanner = adapter.bluetoothLeScanner ?: return
-        _bleState.value = BleState.SEARCHING
-
-        val filter = ScanFilter.Builder()
-            .setServiceUuid(ParcelUuid.fromString(GATE_SERVICE_UUID))
-            .build()
-        val settings = ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-            .build()
-
-        val callback = object : ScanCallback() {
-            override fun onScanResult(callbackType: Int, result: ScanResult) {
-                if (result.rssi >= RSSI_THRESHOLD) {
-                    _bleState.value = BleState.IN_RANGE
-                }
-            }
-            override fun onScanFailed(errorCode: Int) {
-                _bleState.value = BleState.ERROR
-            }
-        }
-        scanCallback = callback
-
-        scanJob = viewModelScope.launch {
-            scanner.startScan(listOf(filter), settings, callback)
-            delay(30_000)
-            if (_bleState.value == BleState.SEARCHING) {
-                scanner.stopScan(callback)
-                delay(2_000)
-                startBleScan()
-            }
-        }
+    fun stopBleScan() {
+        _bleState.value = BleState.DISCONNECTED
     }
 
     @SuppressLint("MissingPermission")
-    fun stopBleScan() {
-        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
-        val scanner = manager?.adapter?.bluetoothLeScanner
-        scanCallback?.let { scanner?.stopScan(it) }
-        scanCallback = null
-        scanJob?.cancel()
-    }
-
     fun openGate() {
-        if (_bleState.value != BleState.IN_RANGE) return
+        if (_bleState.value == BleState.CONNECTING) return
         _bleState.value = BleState.CONNECTING
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
+            var socket: BluetoothSocket? = null
             try {
-                delay(2_000)
-                _bleState.value = BleState.SENT
-                _gateMessage.value = "Señal enviada. ¡Portón abriéndose!"
-                delay(5_000)
+                val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+                val adapter = bluetoothManager.adapter
+                if (adapter == null || !adapter.isEnabled) {
+                    _bleState.value = BleState.ERROR
+                    _gateMessage.value = "Bluetooth apagado o no disponible"
+                    return@launch
+                }
+
+                val device = adapter.getRemoteDevice(TARGET_MAC)
+                // Usar SPP estándar
+                socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
+                
+                // Intentar conectar con un timeout razonable
+                withTimeoutOrNull(5000) {
+                    socket.connect()
+                } ?: throw Exception("Timeout al conectar con el portón")
+
+                _bleState.value = BleState.CONNECTED
+                
+                val writer = java.io.BufferedWriter(java.io.OutputStreamWriter(socket.outputStream))
+                val reader = java.io.BufferedReader(java.io.InputStreamReader(socket.inputStream))
+
+                // 1. Obtener ID cifrado y desencriptarlo para enviarlo a la placa
+                val encryptedId = _encryptedAndroidId.value.ifBlank {
+                    dataStore.userDataFlow.stateIn(this).value?.aid ?: ""
+                }
+                if (encryptedId.isBlank()) {
+                    throw Exception("ID de dispositivo no encontrado")
+                }
+                val idToSend = CryptoManager.decrypt(encryptedId)
+                
+                writer.write("$idToSend\n")
+                writer.flush()
+
+                // 2. Leer respuesta ESP32 (Esperamos "SOLICITUD_HUELLA")
+                val response1 = reader.readLine() ?: ""
+
+                if (response1.contains("SOLICITUD_HUELLA")) {
+                    // 3. Enviar HUELLA_OK de inmediato (por ahora sin biometría real)
+                    writer.write("HUELLA_OK\n")
+                    writer.flush()
+
+                    // 4. Leer resultado final
+                    val response2 = reader.readLine() ?: ""
+
+                    if (response2.contains("ACCESO_CONCEDIDO")) {
+                        _bleState.value = BleState.SENT
+                        _gateMessage.value = "¡Acceso Concedido! Portón abriéndose."
+                    } else if (response2.contains("ACCESO_DENEGADO")) {
+                        throw Exception("Acceso Denegado por el portón")
+                    } else if (response2.contains("TIMEOUT")) {
+                        throw Exception("El portón no recibió respuesta")
+                    } else {
+                        throw Exception("Respuesta inesperada: $response2")
+                    }
+                } else if (response1.contains("MAC_NO_REGISTRADA")) {
+                    throw Exception("Tu dispositivo no está registrado en el portón")
+                } else {
+                    throw Exception("Respuesta inesperada del portón: $response1")
+                }
+
+                delay(3000)
                 _gateMessage.value = null
-                _bleState.value = BleState.IN_RANGE
+                _bleState.value = BleState.DISCONNECTED
+
             } catch (e: Exception) {
+                android.util.Log.e("BT_SPP", "Error SPP: ${e.message}")
                 _bleState.value = BleState.ERROR
-                _gateMessage.value = "Error al conectar con el portón"
+                _gateMessage.value = e.message ?: "Error al conectar con el portón"
+                delay(4000) // Mostrar error por un momento
+                _bleState.value = BleState.DISCONNECTED
+            } finally {
+                try {
+                    socket?.close()
+                } catch (e: Exception) {
+                    // Ignorar
+                }
             }
         }
     }
@@ -347,6 +345,5 @@ class AppViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        scanJob?.cancel()
     }
 }

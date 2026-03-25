@@ -1,4 +1,4 @@
-package com.example.qr_prueba_gaby.ui.theme
+package com.example.qr_prueba_gaby.presentation.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
@@ -24,3 +24,12 @@ val TextHint        = Color(0xFF445566)
 
 // ── Bordes ──
 val BorderColor     = Color(0xFF223344)
+
+// ── New Design Colors ──
+val NavyBlue        = Color(0xFF0F1B61)
+val MainBlue        = Color(0xFF000666)
+val SecondaryBlue   = Color(0xFF414467)
+val LightGrayBg     = Color(0xFFFAFAFA)
+val InputBg         = Color(0xFFF0F2F5)
+val TextGray        = Color(0xFF6B7280)
+val CardBg          = Color(0xFFF3F4F6)

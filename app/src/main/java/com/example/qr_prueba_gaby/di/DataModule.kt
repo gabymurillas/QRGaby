@@ -1,7 +1,7 @@
-package com.example.qr_prueba_gaby.data.di
+package com.example.qr_prueba_gaby.di
 
 import android.content.Context
-import com.example.qr_prueba_gaby.data.UserDataStore
+import com.example.qr_prueba_gaby.data.pref.UserDataStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

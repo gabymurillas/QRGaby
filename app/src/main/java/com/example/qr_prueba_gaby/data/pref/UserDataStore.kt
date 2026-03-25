@@ -1,4 +1,4 @@
-package com.example.qr_prueba_gaby.data
+package com.example.qr_prueba_gaby.data.pref
 
 import android.content.Context
 import androidx.datastore.core.DataStore

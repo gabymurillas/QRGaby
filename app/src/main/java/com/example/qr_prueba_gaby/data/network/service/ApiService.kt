@@ -1,8 +1,9 @@
-package com.example.qr_prueba_gaby.data.api
+package com.example.qr_prueba_gaby.data.network.service
 
+import com.example.qr_prueba_gaby.data.model.UserData
 import retrofit2.Response
-import retrofit2.http.Body
-import retrofit2.http.POST
+import retrofit2.http.GET
+import retrofit2.http.Query
 
 /**
  * Modelos para seguir el formato Odoo (params wrapper).
@@ -34,6 +35,6 @@ data class OdooError(
 )
 
 interface ApiService {
-    @POST("api/sync_vehicular")
-    suspend fun syncVehicular(@Body request: OdooRequest<SyncParams>): Response<OdooResponse>
+    @GET("api/sync_vehicular")
+    suspend fun syncVehicular(@Query("cedula") cedula: String): Response<OdooResponse>
 }

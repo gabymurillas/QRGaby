@@ -1,9 +1,12 @@
-package com.example.qr_prueba_gaby
+package com.example.qr_prueba_gaby.app.host
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -19,12 +22,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.qr_prueba_gaby.ui.screens.MainScreen
-import com.example.qr_prueba_gaby.ui.screens.PermissionsScreen
-import com.example.qr_prueba_gaby.ui.screens.QrSyncScreen
-import com.example.qr_prueba_gaby.ui.screens.RegistrationScreen
-import com.example.qr_prueba_gaby.ui.theme.QRPRUEBAGABYTheme
-import com.example.qr_prueba_gaby.ui.viewmodel.AppViewModel
+import com.example.qr_prueba_gaby.presentation.ui.screens.MainScreen
+import com.example.qr_prueba_gaby.presentation.ui.screens.PermissionsScreen
+import com.example.qr_prueba_gaby.presentation.ui.screens.QrSyncScreen
+import com.example.qr_prueba_gaby.presentation.ui.screens.RegistrationScreen
+import com.example.qr_prueba_gaby.presentation.ui.theme.QRPRUEBAGABYTheme
+import com.example.qr_prueba_gaby.presentation.ui.viewmodels.AppViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 // Rutas de navegación
@@ -38,6 +41,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
+        // Configurar Modo Inmersivo (Pantalla Completa)
+        val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
+        windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
+
         setContent {
             QRPRUEBAGABYTheme {
                 Surface(

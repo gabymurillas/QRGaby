@@ -1,4 +1,4 @@
-package com.example.qr_prueba_gaby.ui.theme
+package com.example.qr_prueba_gaby.presentation.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

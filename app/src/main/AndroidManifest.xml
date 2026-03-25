@@ -26,7 +26,7 @@
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
 
     <application
-        android:name=".QRGabyApplication"
+        android:name=".app.android.QRGabyApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -38,7 +38,7 @@
         android:theme="@style/Theme.QRPRUEBAGABY">
 
         <activity
-            android:name=".MainActivity"
+            android:name=".app.host.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.QRPRUEBAGABY">

@@ -1,6 +1,7 @@
-package com.example.qr_prueba_gaby.data
+package com.example.qr_prueba_gaby.utils
 
 import android.util.Base64
+import com.example.qr_prueba_gaby.BuildConfig
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -13,8 +14,8 @@ import javax.crypto.spec.SecretKeySpec
  */
 object CryptoManager {
 
-    // Llave de 32 caracteres (256 bits). Cámbiala por una propia y mantenla secreta.
-    private const val SHARED_SECRET = "GabyQrSecureKey12345678901234567" 
+    // La llave se obtiene ahora desde BuildConfig para mayor seguridad.
+    private val SHARED_SECRET = BuildConfig.SHARED_SECRET 
     private const val TRANSFORMATION = "AES/GCM/NoPadding"
     private const val GCM_TAG_LENGTH = 128
     private const val IV_SIZE = 12
