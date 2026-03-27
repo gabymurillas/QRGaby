@@ -2,7 +2,9 @@ package com.example.qr_prueba_gaby.data.network.service
 
 import com.example.qr_prueba_gaby.data.model.UserData
 import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
 import retrofit2.http.Query
 
 /**
@@ -34,7 +36,14 @@ data class OdooError(
     val data: Any? = null
 )
 
+data class GateOpenRequest(
+    val fecha_hora: String
+)
+
 interface ApiService {
     @GET("api/sync_vehicular")
     suspend fun syncVehicular(@Query("cedula") cedula: String): Response<OdooResponse>
+
+    @POST("api/open_gate")
+    suspend fun logGateOpen(@Body request: OdooRequest<GateOpenRequest>): Response<OdooResponse>
 }

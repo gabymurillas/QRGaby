@@ -24,23 +24,26 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.qr_prueba_gaby.presentation.ui.viewmodels.AppViewModel
+import com.example.qr_prueba_gaby.presentation.ui.viewmodels.SyncViewModel
 import kotlinx.coroutines.delay
 
 @Composable
 fun QrSyncScreen(
-    viewModel: AppViewModel,
+    viewModel: SyncViewModel,
     onActivated: () -> Unit,
     onReset: () -> Unit
 ) {
     val qrBitmap by viewModel.qrBitmap.collectAsState()
     val isActivated by viewModel.isActivatedFlow.collectAsStateWithLifecycle(null)
-    val nombre by viewModel.nombre.collectAsState()
-    val cedula by viewModel.cedula.collectAsState()
+    val userData by viewModel.userDataFlow.collectAsStateWithLifecycle(null)
     val isValidating by viewModel.isValidating.collectAsStateWithLifecycle(false)
+    
+    // Estados para la visibilidad del ID
+    val decryptedId by viewModel.decryptedAndroidId.collectAsStateWithLifecycle()
+    val idProgress by viewModel.idVisibilityProgress.collectAsStateWithLifecycle()
+    
     var validationError by remember { mutableStateOf<String?>(null) }
 
-    // Cuando se activa, espera 2 segundos y navega
     LaunchedEffect(isActivated) {
         if (isActivated == true) {
             delay(2000)
@@ -56,7 +59,6 @@ fun QrSyncScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         contentPadding = PaddingValues(top = 20.dp, bottom = 40.dp)
     ) {
-        // ── Top Bar ──
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -75,93 +77,89 @@ fun QrSyncScreen(
             Spacer(modifier = Modifier.height(20.dp))
         }
 
-        // ── Titles ──
         item {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "PORTAL DE ACCESO",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextGray,
-                    letterSpacing = 1.sp
-                )
+                Text(text = "PORTAL DE ACCESO", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextGray, letterSpacing = 1.sp)
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Muestra este código al\nadministrador",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = NavyBlue,
-                    textAlign = TextAlign.Center,
-                    lineHeight = 32.sp
-                )
+                Text(text = "Muestra este código al\nadministrador", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = NavyBlue, textAlign = TextAlign.Center, lineHeight = 32.sp)
                 Spacer(modifier = Modifier.height(12.dp))
-                // Decorative divider line
-                Box(
-                    modifier = Modifier
-                        .width(40.dp)
-                        .height(3.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFD1D5DB))
-                )
+                Box(modifier = Modifier.width(40.dp).height(3.dp).clip(CircleShape).background(Color(0xFFD1D5DB)))
             }
             Spacer(modifier = Modifier.height(30.dp))
         }
 
-        // ── Main Card (QR + Info) ──
         item {
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(elevation = 12.dp, shape = RoundedCornerShape(32.dp), spotColor = Color(0x22000000)),
+                modifier = Modifier.fillMaxWidth().shadow(elevation = 12.dp, shape = RoundedCornerShape(32.dp)),
                 shape = RoundedCornerShape(32.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // QR Box
+                Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1f)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(InputBg)
-                            .padding(24.dp),
+                        modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(24.dp)).background(InputBg).padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (qrBitmap != null) {
-                            Image(
-                                bitmap = qrBitmap!!.asImageBitmap(),
-                                contentDescription = "QR",
-                                modifier = Modifier.fillMaxSize()
-                            )
-                            QRBracketsOverlay()
-                        } else {
-                            CircularProgressIndicator(color = NavyBlue)
-                        }
+                        qrBitmap?.let {
+                            Image(bitmap = it.asImageBitmap(), contentDescription = "QR", modifier = Modifier.fillMaxSize())
+                        } ?: CircularProgressIndicator(color = NavyBlue)
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // User Info
-                    Text(
-                        text = nombre.ifBlank { "Usuario" },
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1F2937)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "C.I: V-$cedula",
-                        fontSize = 14.sp,
-                        color = TextGray,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Text(text = userData?.u ?: "Usuario", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1F2937))
+                    Text(text = "C.I: V-${userData?.c ?: ""}", fontSize = 14.sp, color = TextGray)
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    // ── SECCIÓN ID DESENCRIPTADO (CON LOGICA DE 30S) ──
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    AnimatedVisibility(
+                        visible = decryptedId != null,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Surface(
+                                color = Color(0xFFF1F5F9),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            ) {
+                                Text(
+                                    text = decryptedId ?: "",
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = NavyBlue
+                                )
+                            }
+                            LinearProgressIndicator(
+                                progress = idProgress,
+                                modifier = Modifier.width(100.dp).height(4.dp).clip(CircleShape),
+                                color = NavyBlue,
+                                trackColor = Color(0xFFE2E8F0)
+                            )
+                        }
+                    }
 
-                    // Status Badge
+                    TextButton(
+                        onClick = { userData?.let { viewModel.showDecryptedId(it.aid) } }
+                    ) {
+                        Icon(
+                            imageVector = if (decryptedId == null) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = NavyBlue
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (decryptedId == null) "VER ID TÉCNICO" else "OCULTAR ID",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = NavyBlue
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
                     StatusBadge(
                         text = if (isActivated == true) "ACCESO ACTIVADO" else "ESPERANDO VALIDACIÓN",
                         color = if (isActivated == true) Color(0xFF00C853) else NavyBlue,
@@ -172,19 +170,17 @@ fun QrSyncScreen(
             Spacer(modifier = Modifier.height(40.dp))
         }
 
-        // ── Action Button ──
         item {
             Button(
                 onClick = {
                     validationError = null
                     viewModel.validateOnEndpoint(
+                        cedula = userData?.c ?: "",
                         onSuccess = { onActivated() },
                         onError = { validationError = it }
                     )
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp),
+                modifier = Modifier.fillMaxWidth().height(64.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = NavyBlue),
                 enabled = !isValidating && isActivated != true
@@ -192,39 +188,17 @@ fun QrSyncScreen(
                 if (isValidating) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
                 } else {
-                    Icon(
-                        imageVector = if (isActivated == true) Icons.Default.Check else Icons.Default.Sync,
-                        contentDescription = null,
-                        tint = Color.White
-                    )
+                    Icon(imageVector = if (isActivated == true) Icons.Default.Check else Icons.Default.Sync, contentDescription = null, tint = Color.White)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = if (isActivated == true) "ACTIVADO" else "Verificar",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                    Text(text = if (isActivated == true) "ACTIVADO" else "Verificar", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
             }
             
-            // Error Display
             AnimatedVisibility(visible = validationError != null) {
-                Text(
-                    text = validationError ?: "",
-                    color = Color(0xFFEF5350),
-                    fontSize = 13.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 12.dp)
-                )
+                Text(text = validationError ?: "", color = Color.Red, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 12.dp))
             }
             
-            // Optional "Volver" as TextButton if needed, or if the main button is "Verificar"
-            // the user said "cambiar botón volver por botón verificar".
-            // If they want to go back to edit:
-            TextButton(
-                onClick = { onReset() },
-                modifier = Modifier.padding(top = 16.dp)
-            ) {
+            TextButton(onClick = { onReset() }, modifier = Modifier.padding(top = 16.dp)) {
                 Text("Volver a editar perfil", color = TextGray)
             }
         }
@@ -232,71 +206,20 @@ fun QrSyncScreen(
 }
 
 @Composable
-private fun QRBracketsOverlay() {
-    Box(modifier = Modifier.fillMaxSize()) {
-        val color = NavyBlue.copy(alpha = 0.8f)
-        val thickness = 3.dp
-        val size = 20.dp
-        
-        // Top Left
-        Box(modifier = Modifier.align(Alignment.TopStart).size(size)) {
-            Box(modifier = Modifier.fillMaxWidth().height(thickness).background(color))
-            Box(modifier = Modifier.fillMaxHeight().width(thickness).background(color))
-        }
-        // Top Right
-        Box(modifier = Modifier.align(Alignment.TopEnd).size(size)) {
-            Box(modifier = Modifier.fillMaxWidth().height(thickness).background(color))
-            Box(modifier = Modifier.fillMaxHeight().width(thickness).background(color).align(Alignment.TopEnd))
-        }
-        // Bottom Left
-        Box(modifier = Modifier.align(Alignment.BottomStart).size(size)) {
-            Box(modifier = Modifier.fillMaxWidth().height(thickness).background(color).align(Alignment.BottomStart))
-            Box(modifier = Modifier.fillMaxHeight().width(thickness).background(color))
-        }
-        // Bottom Right
-        Box(modifier = Modifier.align(Alignment.BottomEnd).size(size)) {
-            Box(modifier = Modifier.fillMaxWidth().height(thickness).background(color).align(Alignment.BottomEnd))
-            Box(modifier = Modifier.fillMaxHeight().width(thickness).background(color).align(Alignment.BottomEnd))
-        }
-    }
-}
-
-@Composable
 private fun StatusBadge(text: String, color: Color, pulse: Boolean) {
     val alpha by if (pulse) {
-        rememberInfiniteTransition(label = "pulseAlpha").animateFloat(
-            initialValue = 0.5f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(1000, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = ""
+        rememberInfiniteTransition().animateFloat(
+            initialValue = 0.5f, targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(1000), RepeatMode.Reverse), label = ""
         )
-    } else {
-        remember { mutableStateOf(1f) }
-    }
+    } else remember { mutableStateOf(1f) }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier
-            .clip(RoundedCornerShape(100.dp))
-            .background(color.copy(alpha = 0.1f))
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+        modifier = Modifier.clip(RoundedCornerShape(100.dp)).background(color.copy(alpha = 0.1f)).padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(color.copy(alpha = alpha))
-        )
-        Text(
-            text = text,
-            color = color,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.5.sp
-        )
+        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(color.copy(alpha = alpha)))
+        Text(text = text, color = color, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     }
 }

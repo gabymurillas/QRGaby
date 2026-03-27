@@ -2,6 +2,7 @@ package com.example.qr_prueba_gaby.app.host
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
@@ -16,7 +17,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
@@ -27,7 +27,7 @@ import com.example.qr_prueba_gaby.presentation.ui.screens.PermissionsScreen
 import com.example.qr_prueba_gaby.presentation.ui.screens.QrSyncScreen
 import com.example.qr_prueba_gaby.presentation.ui.screens.RegistrationScreen
 import com.example.qr_prueba_gaby.presentation.ui.theme.QRPRUEBAGABYTheme
-import com.example.qr_prueba_gaby.presentation.ui.viewmodels.AppViewModel
+import com.example.qr_prueba_gaby.presentation.ui.viewmodels.*
 import dagger.hilt.android.AndroidEntryPoint
 
 // Rutas de navegación
@@ -40,13 +40,19 @@ private const val ROUTE_MAIN          = "main"
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         
-        // Configurar Modo Inmersivo (Pantalla Completa)
-        val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
-        windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
-
+        // Configurar Barras Transparentes con Iconos Oscuros (para fondo claro)
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT
+            ),
+            navigationBarStyle = SystemBarStyle.light(
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT
+            )
+        )
+        
         setContent {
             QRPRUEBAGABYTheme {
                 Surface(
@@ -62,15 +68,14 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun AppNavigation() {
-    val context = LocalContext.current
-    val viewModel: AppViewModel = hiltViewModel()
     val navController = rememberNavController()
 
-    // Usamos null como valor inicial para saber si todavía estamos leyendo de DataStore
-    val isRegistered by viewModel.isRegisteredFlow.collectAsStateWithLifecycle()
+    // Usamos el SyncViewModel solo para chequear el estado inicial de activación
+    val syncViewModel: SyncViewModel = hiltViewModel()
+    val isActivated by syncViewModel.isActivatedFlow.collectAsStateWithLifecycle()
 
     // Pantalla de carga mientras se determina el destino inicial
-    if (isRegistered == null) {
+    if (isActivated == null) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -80,7 +85,7 @@ private fun AppNavigation() {
         return
     }
 
-    val startDestination = if (isRegistered == true) ROUTE_MAIN else ROUTE_REGISTRATION
+    val startDestination = if (isActivated == true) ROUTE_MAIN else ROUTE_REGISTRATION
 
     NavHost(
         navController = navController,
@@ -88,9 +93,9 @@ private fun AppNavigation() {
     ) {
         // ── Pantalla 1: Registro ──
         composable(ROUTE_REGISTRATION) {
+            val regViewModel: RegistrationViewModel = hiltViewModel()
             RegistrationScreen(
-                viewModel = viewModel,
-                context = context,
+                viewModel = regViewModel,
                 onNavigateToQr = {
                     navController.navigate(ROUTE_QR_SYNC) {
                         popUpTo(ROUTE_REGISTRATION) { inclusive = true }
@@ -101,8 +106,9 @@ private fun AppNavigation() {
 
         // ── Pantalla 2: QR de sincronización ──
         composable(ROUTE_QR_SYNC) {
+            val syncVM: SyncViewModel = hiltViewModel()
             QrSyncScreen(
-                viewModel = viewModel,
+                viewModel = syncVM,
                 onActivated = {
                     navController.navigate(ROUTE_PERMISSIONS) {
                         popUpTo(ROUTE_QR_SYNC) { inclusive = true }
@@ -129,11 +135,14 @@ private fun AppNavigation() {
 
         // ── Pantalla 4: Dashboard Principal ──
         composable(ROUTE_MAIN) {
+            val mainVM: MainViewModel = hiltViewModel()
             MainScreen(
-                viewModel = viewModel,
+                viewModel = mainVM,
                 onLogout = {
-                    navController.navigate(ROUTE_REGISTRATION) {
-                        popUpTo(ROUTE_MAIN) { inclusive = true }
+                    mainVM.logout {
+                        navController.navigate(ROUTE_REGISTRATION) {
+                            popUpTo(ROUTE_MAIN) { inclusive = true }
+                        }
                     }
                 }
             )
