@@ -18,4 +18,10 @@ object DataModule {
     fun provideUserDataStore(@ApplicationContext context: Context): UserDataStore {
         return UserDataStore(context)
     }
+
+    @Provides
+    @Singleton
+    fun provideGateRepository(@ApplicationContext context: Context): com.example.qr_prueba_gaby.data.repository.GateRepository {
+        return com.example.qr_prueba_gaby.data.repository.GateRepository(context)
+    }
 }

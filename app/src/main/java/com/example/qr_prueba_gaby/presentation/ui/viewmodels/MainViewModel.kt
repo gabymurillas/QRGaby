@@ -1,40 +1,34 @@
 package com.example.qr_prueba_gaby.presentation.ui.viewmodels
 
-import android.annotation.SuppressLint
-import android.bluetooth.BluetoothManager
-import android.bluetooth.BluetoothSocket
-import android.content.Context
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.qr_prueba_gaby.data.network.service.ApiService
 import com.example.qr_prueba_gaby.data.network.service.GateOpenRequest
 import com.example.qr_prueba_gaby.data.network.service.OdooRequest
 import com.example.qr_prueba_gaby.data.pref.UserDataStore
+import com.example.qr_prueba_gaby.data.repository.GateRepository
+import com.example.qr_prueba_gaby.data.repository.GateResult
 import com.example.qr_prueba_gaby.utils.CryptoManager
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val dataStore: UserDataStore,
     private val apiService: ApiService,
-    @ApplicationContext private val context: Context
+    private val gateRepository: GateRepository
 ) : ViewModel() {
 
     private val _bleState = MutableStateFlow(BleState.DISCONNECTED)
@@ -107,52 +101,36 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    @SuppressLint("MissingPermission")
     fun openGate() {
         if (_bleState.value == BleState.CONNECTING) return
         _bleState.value = BleState.CONNECTING
 
-        viewModelScope.launch(Dispatchers.IO) {
-            var socket: BluetoothSocket? = null
+        viewModelScope.launch {
             try {
-                val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-                val device = bluetoothManager.adapter.getRemoteDevice(TARGET_MAC)
-                socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
-                
-                withTimeoutOrNull(5000) { socket.connect() } ?: throw Exception("Sin respuesta del portón")
-                _bleState.value = BleState.CONNECTED
-                
-                val writer = java.io.BufferedWriter(java.io.OutputStreamWriter(socket.outputStream))
-                val reader = java.io.BufferedReader(java.io.InputStreamReader(socket.inputStream))
-
                 val user = dataStore.userDataFlow.stateIn(this).value ?: throw Exception("Usuario no encontrado")
-                val idToSend = CryptoManager.decrypt(user.aid)
+                val idToSend = CryptoManager.decrypt(user.aid) ?: throw Exception("Error al desencriptar ID")
                 
-                writer.write("$idToSend\n")
-                writer.flush()
+                // Llamada al repositorio (ya corre en IO interiormente)
+                val result = gateRepository.openGate(idToSend)
 
-                if (reader.readLine()?.contains("SOLICITUD_HUELLA") == true) {
-                    writer.write("HUELLA_OK\n")
-                    writer.flush()
-                    if (reader.readLine()?.contains("ACCESO_CONCEDIDO") == true) {
-                        _bleState.value = BleState.SENT
-                        _gateMessage.value = "¡Acceso Concedido!"
-                        
-                        // Registro de apertura en el servidor (Fire & Forget)
-                        viewModelScope.launch {
-                            try {
-                                val timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-                                val request = GateOpenRequest(
-                                    fecha_hora = timestamp
-                                )
-                                apiService.logGateOpen(OdooRequest(request))
-                            } catch (apiError: Exception) {
-                                // No bloqueamos el flujo del portón por errores de red
-                                android.util.Log.e("MainViewModel", "Error al registrar apertura: ${apiError.message}")
-                            }
+                if (result is GateResult.Success) {
+                    _bleState.value = BleState.SENT
+                    _gateMessage.value = "¡Acceso Concedido!"
+                    
+                    // Registro de apertura en el servidor (Fire & Forget)
+                    viewModelScope.launch {
+                        try {
+                            val timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                            val request = GateOpenRequest(fecha_hora = timestamp)
+                            apiService.logGateOpen(OdooRequest(request))
+                        } catch (apiError: Exception) {
+                            android.util.Log.e("MainViewModel", "Error al registrar apertura: ${apiError.message}")
                         }
                     }
+                } else if (result is GateResult.Error) {
+                    throw Exception(result.message)
                 }
+
                 delay(2000)
                 _bleState.value = BleState.DISCONNECTED
             } catch (e: Exception) {
@@ -160,8 +138,6 @@ class MainViewModel @Inject constructor(
                 _gateMessage.value = e.message
                 delay(3000)
                 _bleState.value = BleState.DISCONNECTED
-            } finally {
-                socket?.close()
             }
         }
     }
