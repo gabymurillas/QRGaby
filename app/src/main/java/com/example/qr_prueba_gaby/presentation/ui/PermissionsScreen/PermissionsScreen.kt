@@ -1,5 +1,6 @@
-package com.example.qr_prueba_gaby.presentation.ui.screens
+package com.example.qr_prueba_gaby.presentation.ui.PermissionsScreen
 
+import android.Manifest
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -30,12 +31,12 @@ fun PermissionsScreen(onPermissionsGranted: () -> Unit) {
 
     val blePermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         listOf(
-            android.Manifest.permission.BLUETOOTH_SCAN,
-            android.Manifest.permission.BLUETOOTH_CONNECT
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.BLUETOOTH_CONNECT
         )
     } else {
         listOf(
-            android.Manifest.permission.ACCESS_FINE_LOCATION
+            Manifest.permission.ACCESS_FINE_LOCATION
         )
     }
 

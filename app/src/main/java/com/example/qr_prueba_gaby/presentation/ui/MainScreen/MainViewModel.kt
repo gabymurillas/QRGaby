@@ -1,16 +1,17 @@
-package com.example.qr_prueba_gaby.presentation.ui.viewmodels
+package com.example.qr_prueba_gaby.presentation.ui.MainScreen
 
+import android.util.Log
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.qr_prueba_gaby.data.network.service.ApiService
 import com.example.qr_prueba_gaby.data.network.service.GateOpenRequest
 import com.example.qr_prueba_gaby.data.network.service.OdooRequest
 import com.example.qr_prueba_gaby.data.pref.UserDataStore
 import com.example.qr_prueba_gaby.data.repository.GateRepository
 import com.example.qr_prueba_gaby.data.repository.GateResult
+import com.example.qr_prueba_gaby.presentation.ui.common.BleState
+import com.example.qr_prueba_gaby.presentation.ui.common.OdooStatus
 import com.example.qr_prueba_gaby.utils.CryptoManager
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -22,6 +23,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 @HiltViewModel
@@ -53,13 +56,14 @@ class MainViewModel @Inject constructor(
     val unauthorizedEvent = _unauthorizedEvent.asSharedFlow()
 
     val userDataFlow = dataStore.userDataFlow
-    
+
     private var proximityJob: Job? = null
     private var idVisibilityJob: Job? = null
+    private var isOperationInProgress = false
 
     init {
         checkOdooStatus()
-        startProximitySimulation()
+        startDeviceDetection()
     }
 
     private fun checkOdooStatus() {
@@ -68,76 +72,82 @@ class MainViewModel @Inject constructor(
                 try {
                     val user = userDataFlow.first()
                     if (user != null) {
-                        _odooStatus.value = OdooStatus.VERIFYING
-                        val response = apiService.syncVehicular(user.c)
+                        // RECOMENDACIÓN: Solo mostrar amarillo si no estamos ya en VALID
+                        if (_odooStatus.value != OdooStatus.VALID) {
+                            _odooStatus.value = OdooStatus.VERIFYING
+                        }
                         
+                        val response = apiService.syncVehicular(user.c)
+
                         if (response.isSuccessful && response.body()?.result?.status == "success") {
                             _odooStatus.value = OdooStatus.VALID
                         } else {
                             _odooStatus.value = OdooStatus.INVALID
-                            // Si no es válido o no se encuentra, desloguear automáticamente
-                            logout { 
+                            logout {
                                 viewModelScope.launch { _unauthorizedEvent.emit(Unit) }
                             }
-                            return@launch // Detener el ciclo si el usuario es inválido
+                            return@launch
                         }
                     }
                 } catch (e: Exception) {
                     _odooStatus.value = OdooStatus.OFFLINE
                 }
-                delay(10000) // Refresco cada 10 segundos
+                delay(10000)
             }
         }
     }
 
-    private fun startProximitySimulation() {
+    private fun startDeviceDetection() {
         proximityJob?.cancel()
         proximityJob = viewModelScope.launch {
             while (true) {
-                val mockRssi = (-80..-45).random()
-                _rssi.value = mockRssi
-                delay(1500)
+                if (!isOperationInProgress) {
+                    val isAvailable = gateRepository.checkAvailability()
+                    _rssi.value = if (isAvailable) -50 else -100
+                }
+                delay(2000)
             }
         }
     }
 
     fun openGate() {
-        if (_bleState.value == BleState.CONNECTING) return
+        if (_bleState.value == BleState.CONNECTING || isOperationInProgress) return
         _bleState.value = BleState.CONNECTING
+        isOperationInProgress = true
 
         viewModelScope.launch {
             try {
                 val user = dataStore.userDataFlow.stateIn(this).value ?: throw Exception("Usuario no encontrado")
                 val idToSend = CryptoManager.decrypt(user.aid) ?: throw Exception("Error al desencriptar ID")
-                
-                // Llamada al repositorio (ya corre en IO interiormente)
+
                 val result = gateRepository.openGate(idToSend)
 
                 if (result is GateResult.Success) {
                     _bleState.value = BleState.SENT
                     _gateMessage.value = "¡Acceso Concedido!"
-                    
-                    // Registro de apertura en el servidor (Fire & Forget)
+
                     viewModelScope.launch {
                         try {
                             val timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
                             val request = GateOpenRequest(fecha_hora = timestamp)
                             apiService.logGateOpen(OdooRequest(request))
                         } catch (apiError: Exception) {
-                            android.util.Log.e("MainViewModel", "Error al registrar apertura: ${apiError.message}")
+                            Log.e("MainViewModel", "Error al registrar apertura: ${apiError.message}")
                         }
                     }
+                    delay(1000)
                 } else if (result is GateResult.Error) {
                     throw Exception(result.message)
                 }
-
-                delay(2000)
-                _bleState.value = BleState.DISCONNECTED
             } catch (e: Exception) {
                 _bleState.value = BleState.ERROR
                 _gateMessage.value = e.message
-                delay(3000)
+                delay(2000)
+            } finally {
                 _bleState.value = BleState.DISCONNECTED
+                isOperationInProgress = false
+                val isAvailable = gateRepository.checkAvailability()
+                _rssi.value = if (isAvailable) -50 else -100
             }
         }
     }
@@ -153,11 +163,11 @@ class MainViewModel @Inject constructor(
         idVisibilityJob = viewModelScope.launch {
             val decrypted = CryptoManager.decrypt(encryptedId)
             _decryptedAndroidId.value = decrypted
-            
+
             val durationMs = 30_000L
             val intervalMs = 100L
             val steps = (durationMs / intervalMs).toInt()
-            
+
             for (i in steps downTo 0) {
                 _idVisibilityProgress.value = i.toFloat() / steps
                 delay(intervalMs)

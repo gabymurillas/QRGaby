@@ -1,4 +1,4 @@
-package com.example.qr_prueba_gaby.presentation.ui.viewmodels
+package com.example.qr_prueba_gaby.presentation.ui.QrSyncScreen
 
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -44,7 +44,7 @@ class SyncViewModel @Inject constructor(
 
     val userDataFlow = dataStore.userDataFlow
     val isActivatedFlow: StateFlow<Boolean?> = dataStore.isActivatedFlow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+        .stateIn(viewModelScope, SharingStarted.Companion.WhileSubscribed(5000), null)
 
     init {
         generateQrFromStoredData()
@@ -95,11 +95,11 @@ class SyncViewModel @Inject constructor(
         idVisibilityJob = viewModelScope.launch {
             val decrypted = CryptoManager.decrypt(encryptedId)
             _decryptedAndroidId.value = decrypted
-            
+
             val durationMs = 30_000L
             val intervalMs = 100L
             val steps = (durationMs / intervalMs).toInt()
-            
+
             for (i in steps downTo 0) {
                 _idVisibilityProgress.value = i.toFloat() / steps
                 delay(intervalMs)

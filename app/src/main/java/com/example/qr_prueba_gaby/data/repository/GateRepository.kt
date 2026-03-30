@@ -4,8 +4,8 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
 import android.content.Context
-import com.example.qr_prueba_gaby.presentation.ui.viewmodels.SPP_UUID
-import com.example.qr_prueba_gaby.presentation.ui.viewmodels.TARGET_MAC
+import com.example.qr_prueba_gaby.presentation.ui.common.SPP_UUID
+import com.example.qr_prueba_gaby.presentation.ui.common.TARGET_MAC
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -59,9 +59,27 @@ class GateRepository(
             }
 
             GateResult.Error(response1 ?: "Respuesta inesperada del hardware")
-
         } catch (e: Exception) {
             GateResult.Error(e.message ?: "Error de conexión")
+        } finally {
+            try { socket?.close() } catch (_: Exception) {}
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    suspend fun checkAvailability(): Boolean = withContext(Dispatchers.IO) {
+        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        val adapter = bluetoothManager.adapter ?: return@withContext false
+        if (!adapter.isEnabled) return@withContext false
+
+        var socket: BluetoothSocket? = null
+        try {
+            val device = adapter.getRemoteDevice(TARGET_MAC)
+            socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
+            // Timeout corto para chequear disponibilidad sin bloquear mucho
+            withTimeoutOrNull(2000) { socket.connect() } != null
+        } catch (e: Exception) {
+            false
         } finally {
             try { socket?.close() } catch (_: Exception) {}
         }

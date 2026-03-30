@@ -1,4 +1,4 @@
-package com.example.qr_prueba_gaby.presentation.ui.viewmodels
+package com.example.qr_prueba_gaby.presentation.ui.RegistrationScreen
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -92,7 +92,7 @@ class RegistrationViewModel @Inject constructor(
             try {
                 val androidId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
                 val aidEncrypted = CryptoManager.encrypt(androidId)
-                
+
                 val userData = UserData(
                     u = nombreTrimmed,
                     c = _cedula.value,

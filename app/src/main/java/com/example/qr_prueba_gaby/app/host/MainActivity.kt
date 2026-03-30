@@ -5,9 +5,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -22,10 +19,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.qr_prueba_gaby.presentation.ui.screens.MainScreen
-import com.example.qr_prueba_gaby.presentation.ui.screens.PermissionsScreen
-import com.example.qr_prueba_gaby.presentation.ui.screens.QrSyncScreen
-import com.example.qr_prueba_gaby.presentation.ui.screens.RegistrationScreen
+import com.example.qr_prueba_gaby.presentation.ui.MainScreen.MainScreen
+import com.example.qr_prueba_gaby.presentation.ui.MainScreen.MainViewModel
+import com.example.qr_prueba_gaby.presentation.ui.PermissionsScreen.PermissionsScreen
+import com.example.qr_prueba_gaby.presentation.ui.QrSyncScreen.QrSyncScreen
+import com.example.qr_prueba_gaby.presentation.ui.QrSyncScreen.SyncViewModel
+import com.example.qr_prueba_gaby.presentation.ui.RegistrationScreen.RegistrationScreen
+import com.example.qr_prueba_gaby.presentation.ui.RegistrationScreen.RegistrationViewModel
 import com.example.qr_prueba_gaby.presentation.ui.theme.QRPRUEBAGABYTheme
 import com.example.qr_prueba_gaby.presentation.ui.viewmodels.*
 import dagger.hilt.android.AndroidEntryPoint

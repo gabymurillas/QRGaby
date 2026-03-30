@@ -1,4 +1,4 @@
-package com.example.qr_prueba_gaby.presentation.ui.viewmodels
+package com.example.qr_prueba_gaby.presentation.ui.common
 
 enum class BleState { DISCONNECTED, CONNECTING, CONNECTED, SENT, ERROR }
 enum class OdooStatus { VERIFYING, VALID, INVALID, OFFLINE }
