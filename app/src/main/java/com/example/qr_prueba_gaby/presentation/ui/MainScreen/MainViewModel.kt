@@ -3,6 +3,7 @@ package com.example.qr_prueba_gaby.presentation.ui.MainScreen
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.qr_prueba_gaby.data.model.UserData
 import com.example.qr_prueba_gaby.data.network.service.ApiService
 import com.example.qr_prueba_gaby.data.network.service.GateOpenRequest
 import com.example.qr_prueba_gaby.data.network.service.OdooRequest
@@ -55,7 +56,21 @@ class MainViewModel @Inject constructor(
     private val _unauthorizedEvent = MutableSharedFlow<Unit>()
     val unauthorizedEvent = _unauthorizedEvent.asSharedFlow()
 
+    // ── Estados de Seguridad (PIN y Diálogos) ──
+    private val _isPinEntryVisible = MutableStateFlow(false)
+    val isPinEntryVisible = _isPinEntryVisible.asStateFlow()
+
+    private val _isPinSetupVisible = MutableStateFlow(false)
+    val isPinSetupVisible = _isPinSetupVisible.asStateFlow()
+
+    private val _pinError = MutableStateFlow<String?>(null)
+    val pinError = _pinError.asStateFlow()
+
+    private val _authRequestTrigger = MutableSharedFlow<Unit>()
+    val authRequestTrigger = _authRequestTrigger.asSharedFlow()
+
     val userDataFlow = dataStore.userDataFlow
+    val userPinFlow = dataStore.userPinFlow
 
     private var proximityJob: Job? = null
     private var idVisibilityJob: Job? = null
@@ -110,7 +125,74 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun openGate() {
+    /** 
+     * Inicia el flujo de apertura solicitando biometría primero.
+     * Es llamado desde el botón "Abrir" de la UI.
+     */
+    fun startAuthFlow() {
+        if (_bleState.value == BleState.CONNECTING || isOperationInProgress) return
+        
+        viewModelScope.launch {
+            // Enviamos un evento para que el MainScreen (Activity) lance BiometricPrompt
+            _authRequestTrigger.emit(Unit)
+        }
+    }
+
+    /** 
+     * Se llama cuando la biometría es exitosa. 
+     */
+    fun onAuthSuccess() {
+        openGate()
+    }
+
+    /** 
+     * Se llama si la biometría falla o se elige PIN.
+     */
+    fun onBiometricFailureOrPIN() {
+        viewModelScope.launch {
+            val hasPin = userPinFlow.first() != null
+            if (hasPin) {
+                _isPinEntryVisible.value = true
+            } else {
+                _isPinSetupVisible.value = true
+            }
+        }
+    }
+
+    /**
+     * Valida el PIN ingresado.
+     */
+    fun validatePin(enteredPin: String) {
+        viewModelScope.launch {
+            val storedPin = userPinFlow.first()
+            if (enteredPin == storedPin) {
+                _isPinEntryVisible.value = false
+                _pinError.value = null
+                openGate()
+            } else {
+                _pinError.value = "PIN Incorrecto"
+            }
+        }
+    }
+
+    /**
+     * Guarda el PIN por primera vez.
+     */
+    fun setupPin(newPin: String) {
+        viewModelScope.launch {
+            dataStore.savePin(newPin)
+            _isPinSetupVisible.value = false
+            openGate()
+        }
+    }
+
+    fun closePinDialogs() {
+        _isPinEntryVisible.value = false
+        _isPinSetupVisible.value = false
+        _pinError.value = null
+    }
+
+    private fun openGate() {
         if (_bleState.value == BleState.CONNECTING || isOperationInProgress) return
         _bleState.value = BleState.CONNECTING
         isOperationInProgress = true

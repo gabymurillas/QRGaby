@@ -1,7 +1,7 @@
 package com.example.qr_prueba_gaby.app.host
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -27,7 +27,7 @@ import com.example.qr_prueba_gaby.presentation.ui.QrSyncScreen.SyncViewModel
 import com.example.qr_prueba_gaby.presentation.ui.RegistrationScreen.RegistrationScreen
 import com.example.qr_prueba_gaby.presentation.ui.RegistrationScreen.RegistrationViewModel
 import com.example.qr_prueba_gaby.presentation.ui.theme.QRPRUEBAGABYTheme
-import com.example.qr_prueba_gaby.presentation.ui.viewmodels.*
+
 import dagger.hilt.android.AndroidEntryPoint
 
 // Rutas de navegación
@@ -37,7 +37,7 @@ private const val ROUTE_PERMISSIONS   = "permissions"
 private const val ROUTE_MAIN          = "main"
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         

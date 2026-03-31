@@ -23,6 +23,7 @@ class UserDataStore(private val context: Context) {
         private val KEY_IS_REGISTERED = booleanPreferencesKey("is_registered")
         private val KEY_IS_ACTIVATED = booleanPreferencesKey("is_activated")
         private val KEY_USER_JSON = stringPreferencesKey("user_json")
+        private val KEY_USER_PIN = stringPreferencesKey("user_pin")
     }
 
     /** Flow que emite true si el usuario ya está registrado y activo. */
@@ -35,6 +36,11 @@ class UserDataStore(private val context: Context) {
         prefs[KEY_IS_ACTIVATED] ?: false
     }
 
+    /** Flow que emite el PIN del usuario. */
+    val userPinFlow: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[KEY_USER_PIN]
+    }
+
     /** Flow que emite los datos del usuario, o null si no está registrado. */
     val userDataFlow: Flow<UserData?> = context.dataStore.data.map { prefs ->
         prefs[KEY_USER_JSON]?.let { UserData.fromJson(it) }
@@ -44,6 +50,13 @@ class UserDataStore(private val context: Context) {
     suspend fun saveUser(userData: UserData) {
         context.dataStore.edit { prefs ->
             prefs[KEY_USER_JSON] = userData.toJson()
+        }
+    }
+
+    /** Guarda el PIN de seguridad. */
+    suspend fun savePin(pin: String) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_USER_PIN] = pin
         }
     }
 

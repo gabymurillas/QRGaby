@@ -1,5 +1,6 @@
 package com.example.qr_prueba_gaby.presentation.ui.MainScreen
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -20,6 +21,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.qr_prueba_gaby.presentation.ui.MainScreen.Components.*
 import com.example.qr_prueba_gaby.presentation.ui.common.BleState
 import com.example.qr_prueba_gaby.presentation.ui.theme.*
+import com.example.qr_prueba_gaby.data.model.UserData
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,9 +31,33 @@ fun MainScreen(viewModel: MainViewModel, onLogout: () -> Unit) {
     val odooStatus by viewModel.odooStatus.collectAsStateWithLifecycle()
     val gateMessage by viewModel.gateMessage.collectAsStateWithLifecycle(null)
     val userData by viewModel.userDataFlow.collectAsStateWithLifecycle(null)
+
+    // Estados de seguridad
+    val isPinEntryVisible by viewModel.isPinEntryVisible.collectAsStateWithLifecycle()
+    val isPinSetupVisible by viewModel.isPinSetupVisible.collectAsStateWithLifecycle()
+    val pinError by viewModel.pinError.collectAsStateWithLifecycle()
     
     val snackbarHostState = remember { SnackbarHostState() }
     val haptic = LocalHapticFeedback.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    // Lanzar Biometría cuando el ViewModel lo indique
+    LaunchedEffect(Unit) {
+        viewModel.authRequestTrigger.collect {
+            val activity = context as? androidx.fragment.app.FragmentActivity
+            if (activity != null && com.example.qr_prueba_gaby.utils.BiometricAuthManager.isBiometricAvailable(activity)) {
+                com.example.qr_prueba_gaby.utils.BiometricAuthManager.showBiometricPrompt(
+                    activity = activity,
+                    onSuccess = { viewModel.onAuthSuccess() },
+                    onError = { viewModel.onBiometricFailureOrPIN() },
+                    onCancel = { viewModel.onBiometricFailureOrPIN() }
+                )
+            } else {
+                // Si no hay biometría, ir directo a PIN
+                viewModel.onBiometricFailureOrPIN()
+            }
+        }
+    }
 
     LaunchedEffect(rssi) {
         if (rssi > -65) {
@@ -59,6 +85,22 @@ fun MainScreen(viewModel: MainViewModel, onLogout: () -> Unit) {
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = LightGrayBg
     ) { innerPadding ->
+        
+        // Diálogos de Seguridad
+        if (isPinEntryVisible) {
+            PinEntryDialog(
+                onDismiss = { viewModel.closePinDialogs() },
+                onConfirm = { viewModel.validatePin(it) },
+                error = pinError
+            )
+        }
+        if (isPinSetupVisible) {
+            PinSetupDialog(
+                onDismiss = { viewModel.closePinDialogs() },
+                onConfirm = { viewModel.setupPin(it) }
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -67,8 +109,7 @@ fun MainScreen(viewModel: MainViewModel, onLogout: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             StatusHeader(
-                odooStatus = odooStatus,
-                onLogoutClick = { viewModel.logout { onLogout() } }
+                odooStatus = odooStatus
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -99,6 +140,9 @@ fun MainScreen(viewModel: MainViewModel, onLogout: () -> Unit) {
                 val radarAlpha by animateFloatAsState(targetValue = if (isReady) 1f else 0.2f, label = "")
                 RadarRipples(rssi, radarAlpha)
 
+                // Nueva Barra de Proximidad Circular
+                ProximityCircularBar(rssi = rssi)
+
                 Surface(
                     modifier = Modifier
                         .size(160.dp)
@@ -106,7 +150,12 @@ fun MainScreen(viewModel: MainViewModel, onLogout: () -> Unit) {
                     shape = CircleShape,
                     color = if (isBusy) SecondaryBlue else if (isReady) MainBlue else Color.Gray,
                     shadowElevation = if (isBusy) 12.dp else 4.dp,
-                    onClick = { if (isReady) { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); viewModel.openGate() } },
+                    onClick = { 
+                        if (isReady) { 
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            viewModel.startAuthFlow() 
+                        } 
+                    },
                     enabled = !isBusy && isReady
                 ) {
                     Box(contentAlignment = Alignment.Center) {
