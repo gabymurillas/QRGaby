@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.qr_prueba_gaby.presentation.ui.theme.*
+import kotlinx.coroutines.delay
 
 @Composable
 fun PinEntryDialog(
