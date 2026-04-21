@@ -1,4 +1,4 @@
-package com.example.qr_prueba_gaby.presentation.ui.MainScreen.Components
+package com.example.qr_prueba_gaby.presentation.ui.MainScreen.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text

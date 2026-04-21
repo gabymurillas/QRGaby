@@ -22,6 +22,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "QR-PRUEBA-GABY"
+rootProject.name = "Control de Acceso Alcaravan"
 include(":app")
  

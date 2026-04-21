@@ -9,7 +9,7 @@ package com.example.qr_prueba_gaby.data.model
  * @param p  Lista de placas de vehículos registradas
  * @param aid ANDROID_ID encriptado en Base64 (IV + ciphertext)
  */
-data class UserData(
+data class  UserData(
     val u: String,   // nombre y apellido
     val c: String,   // cedula
     val p: List<String>, // placas

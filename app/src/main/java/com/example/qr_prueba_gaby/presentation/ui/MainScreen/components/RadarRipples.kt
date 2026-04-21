@@ -1,4 +1,4 @@
-package com.example.qr_prueba_gaby.presentation.ui.MainScreen.Components
+package com.example.qr_prueba_gaby.presentation.ui.MainScreen.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
