@@ -211,7 +211,10 @@ class MainViewModel @Inject constructor(
                     viewModelScope.launch {
                         try {
                             val timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-                            val request = GateOpenRequest(fecha_hora = timestamp)
+                            val request = GateOpenRequest(
+                                cedula = user.c,
+                                fecha_hora = timestamp
+                            )
                             apiService.logGateOpen(OdooRequest(request))
                         } catch (apiError: Exception) {
                             Log.e("MainViewModel", "Error al registrar apertura: ${apiError.message}")
