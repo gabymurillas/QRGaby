@@ -43,7 +43,7 @@ data class GateOpenRequest(
 )
 
 interface ApiService {
-    @GET("api/sync_vehicular")
+    @GET("api/control_acceso")
     suspend fun syncVehicular(@Query("cedula") cedula: String): Response<OdooResponse>
 
     @Headers("Content-Type: application/json")

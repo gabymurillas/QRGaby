@@ -22,9 +22,9 @@ sealed class GateResult {
  *
  * Protocolo acordado:
  *   Android → envía Android ID\n       → ESP32
- *   ESP32   → "SOLICITUD_HUELLA"       → Android
+ *   ESP32   → "PEDIR_HUELLA"       → Android
  *   Android → "HUELLA_OK\n"            → ESP32
- *   ESP32   → "ACCESO_CONCEDIDO"       → Android ✅
+ *   ESP32   → "ACCESO_OK"       → Android ✅
  */
 class GateRepository(
     private val context: Context
@@ -70,12 +70,12 @@ class GateRepository(
                     lastResponse = line
 
                     when {
-                        line.contains("SOLICITUD_HUELLA") -> {
+                        line.contains("PEDIR_HUELLA") -> {
                             Log.d("GateRepository", "Enviando HUELLA_OK...")
                             writer.write("HUELLA_OK\n")
                             writer.flush()
                         }
-                        line.contains("ACCESO_CONCEDIDO") ->
+                        line.contains("ACCESO_OK") ->
                             finalResult = GateResult.Success
 
                         line.contains("ACCESO_DENEGADO") ->

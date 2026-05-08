@@ -55,6 +55,13 @@ dependencies {
     // ZXing para generar códigos QR
     implementation(libs.zxing.core)
 
+    // CameraX + ML Kit para escanear el QR de provisionamiento del Administrador
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
+    implementation(libs.mlkit.barcode)
+
     // DataStore para persistencia de estado de registro
     implementation(libs.androidx.datastore.preferences)
 

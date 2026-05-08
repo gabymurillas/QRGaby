@@ -4,6 +4,10 @@
  
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Cámara para escanear el QR de provisionamiento del Administrador -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
 
     <!-- Bluetooth Clásico (Android < 12) -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />

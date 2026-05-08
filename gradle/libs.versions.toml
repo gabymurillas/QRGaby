@@ -17,6 +17,8 @@ retrofit = "2.9.0"
 okhttp = "4.12.0"
 biometric = "1.2.0-alpha05"
 fragmentKtx = "1.8.2"
+cameraX = "1.4.2"
+mlkitBarcode = "17.3.0"
 
 
 
@@ -47,6 +49,13 @@ okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhtt
 okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 androidx-fragment-ktx = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragmentKtx" }
+# CameraX
+camerax-core = { group = "androidx.camera", name = "camera-core", version.ref = "cameraX" }
+camerax-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "cameraX" }
+camerax-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraX" }
+camerax-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraX" }
+# ML Kit Barcode Scanning
+mlkit-barcode = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
 
 
 

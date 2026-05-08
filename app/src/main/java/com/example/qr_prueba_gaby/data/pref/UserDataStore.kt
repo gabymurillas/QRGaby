@@ -20,10 +20,13 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class UserDataStore(private val context: Context) {
 
     companion object {
-        private val KEY_IS_REGISTERED = booleanPreferencesKey("is_registered")
-        private val KEY_IS_ACTIVATED = booleanPreferencesKey("is_activated")
-        private val KEY_USER_JSON = stringPreferencesKey("user_json")
-        private val KEY_USER_PIN = stringPreferencesKey("user_pin")
+        private val KEY_IS_REGISTERED   = booleanPreferencesKey("is_registered")
+        private val KEY_IS_ACTIVATED    = booleanPreferencesKey("is_activated")
+        private val KEY_USER_JSON       = stringPreferencesKey("user_json")
+        private val KEY_USER_PIN        = stringPreferencesKey("user_pin")
+        // Provisionamiento Bluetooth
+        private val KEY_URL_ENDPOINT    = stringPreferencesKey("url_endpoint")
+        private val KEY_MAC_DISPOSITIVO = stringPreferencesKey("mac_dispositivo")
     }
 
     /** Flow que emite true si el usuario ya está registrado y activo. */
@@ -44,6 +47,16 @@ class UserDataStore(private val context: Context) {
     /** Flow que emite los datos del usuario, o null si no está registrado. */
     val userDataFlow: Flow<UserData?> = context.dataStore.data.map { prefs ->
         prefs[KEY_USER_JSON]?.let { UserData.fromJson(it) }
+    }
+
+    /** Flow con el endpoint recibido en el provisionamiento BT, o null si aún no se recibió. */
+    val urlEndpointFlow: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[KEY_URL_ENDPOINT]
+    }
+
+    /** Flow con la MAC del ESP32 recibida en el provisionamiento BT, o null si aún no se recibió. */
+    val macDispositivoFlow: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[KEY_MAC_DISPOSITIVO]
     }
 
     /** Persiste los datos del usuario en DataStore. */
@@ -71,6 +84,17 @@ class UserDataStore(private val context: Context) {
     suspend fun setActivated(activated: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[KEY_IS_ACTIVATED] = activated
+        }
+    }
+
+    /**
+     * Persiste los datos de configuración recibidos en el provisionamiento Bluetooth.
+     * Guarda el endpoint del backend y la MAC física del ESP32.
+     */
+    suspend fun saveProvisioningData(endpoint: String, mac: String) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_URL_ENDPOINT]    = endpoint
+            prefs[KEY_MAC_DISPOSITIVO] = mac
         }
     }
 
