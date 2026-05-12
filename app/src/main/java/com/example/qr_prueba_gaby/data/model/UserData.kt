@@ -9,7 +9,7 @@ package com.example.qr_prueba_gaby.data.model
  * @param p  Lista de placas de vehículos registradas
  * @param aid ANDROID_ID encriptado en Base64 (IV + ciphertext)
  */
-data class  UserData(
+data class UserData(
     val u: String,   // nombre y apellido
     val c: String,   // cedula
     val p: List<String>, // placas
@@ -20,8 +20,8 @@ data class  UserData(
      * Ejemplo: {"u":"Juan P","c":"12345678","p":["ABC-123","XYZ-456"],"aid":"..."}
      */
     fun toJson(): String {
-        val placasJson = p.joinToString(",") { "\"$it\"" }
-        return "{\"u\":\"$u\",\"c\":\"$c\",\"p\":[$placasJson],\"aid\":\"$aid\"}"
+        val placasJson = p.joinToString(",") { "\"${it.escapeJson()}\"" }
+        return "{\"u\":\"${u.escapeJson()}\",\"c\":\"${c.escapeJson()}\",\"p\":[$placasJson],\"aid\":\"${aid.escapeJson()}\"}"
     }
 
     companion object {
@@ -38,8 +38,12 @@ data class  UserData(
             } catch (e: Exception) { null }
         }
 
+        private fun String.escapeJson(): String =
+            replace("\\", "\\\\").replace("\"", "\\\"")
+                .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+
         private fun extractValue(json: String, key: String): String {
-            val pattern = "\"$key\":\"([^\"]+)\"".toRegex()
+            val pattern = "\"$key\":\"([^\"]*)\"".toRegex()
             return pattern.find(json)?.groupValues?.get(1) ?: ""
         }
 

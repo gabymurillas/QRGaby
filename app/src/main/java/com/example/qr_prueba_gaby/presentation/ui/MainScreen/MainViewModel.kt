@@ -22,8 +22,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
@@ -199,12 +199,18 @@ class MainViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                val user = dataStore.userDataFlow.stateIn(this).value ?: throw Exception("Usuario no encontrado")
+                val user = dataStore.userDataFlow.first() ?: throw Exception("Usuario no encontrado")
                 val idToSend = CryptoManager.decrypt(user.aid) ?: throw Exception("Error al desencriptar ID")
 
-                val result = gateRepository.openGate(idToSend)
+                val result = withTimeoutOrNull(3_000) {
+                    gateRepository.openGate(idToSend)
+                }
 
-                if (result is GateResult.Success) {
+                if (result == null) {
+                    _bleState.value = BleState.ERROR
+                    _gateMessage.value = "Tardó demasiado, vuelve a intentarlo"
+                    delay(2000)
+                } else if (result is GateResult.Success) {
                     _bleState.value = BleState.SENT
                     _gateMessage.value = "¡Acceso Concedido!"
 

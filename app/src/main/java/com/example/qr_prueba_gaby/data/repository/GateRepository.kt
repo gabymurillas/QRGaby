@@ -45,8 +45,11 @@ class GateRepository(
             val device = adapter.getRemoteDevice(TARGET_MAC)
             socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
 
-            withTimeoutOrNull(10_000) { socket.connect() }
-                ?: throw Exception("Sin respuesta del portón (timeout de conexión)")
+            try {
+                socket.connect()
+            } catch (e: IOException) {
+                throw Exception("Sin respuesta del portón (timeout de conexión)")
+            }
 
             Log.d("GateRepository", "Conectado. Enviando Android ID: $androidId")
             val writer = java.io.BufferedWriter(java.io.OutputStreamWriter(socket.outputStream))
@@ -56,9 +59,9 @@ class GateRepository(
             writer.write("$androidId\n")
             writer.flush()
 
-            // 2. Leer respuestas del ESP32 con timeout de 20 s
+            // 2. Leer respuestas del ESP32 con timeout de 8 s
             var lastResponse: String? = null
-            val result = withTimeoutOrNull(20_000) {
+            val result = withTimeoutOrNull(8_000) {
                 var finalResult: GateResult? = null
                 while (finalResult == null) {
                     val line = try {
