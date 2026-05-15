@@ -27,7 +27,6 @@ import com.example.qr_prueba_gaby.data.model.UserData
 @Composable
 fun MainScreen(viewModel: MainViewModel, onLogout: () -> Unit) {
     val bleState by viewModel.bleState.collectAsStateWithLifecycle()
-    val rssi by viewModel.rssi.collectAsStateWithLifecycle()
     val odooStatus by viewModel.odooStatus.collectAsStateWithLifecycle()
     val gateMessage by viewModel.gateMessage.collectAsStateWithLifecycle(null)
     val userData by viewModel.userDataFlow.collectAsStateWithLifecycle(null)
@@ -59,11 +58,6 @@ fun MainScreen(viewModel: MainViewModel, onLogout: () -> Unit) {
         }
     }
 
-    LaunchedEffect(rssi) {
-        if (rssi > -65) {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        }
-    }
 
     LaunchedEffect(gateMessage) {
         gateMessage?.let {
@@ -123,8 +117,7 @@ fun MainScreen(viewModel: MainViewModel, onLogout: () -> Unit) {
             Spacer(modifier = Modifier.weight(1f))
 
             val isBusy = bleState == BleState.CONNECTING || bleState == BleState.CONNECTED
-            val isReady = rssi > -75
-            
+
             val infiniteTransition = rememberInfiniteTransition(label = "pulse")
             val pulseScale by infiniteTransition.animateFloat(
                 initialValue = 1f,
@@ -137,33 +130,26 @@ fun MainScreen(viewModel: MainViewModel, onLogout: () -> Unit) {
             )
 
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(240.dp)) {
-                val radarAlpha by animateFloatAsState(targetValue = if (isReady) 1f else 0.2f, label = "")
-                RadarRipples(rssi, radarAlpha)
-
-                // Nueva Barra de Proximidad Circular
-                ProximityCircularBar(rssi = rssi)
 
                 Surface(
                     modifier = Modifier
                         .size(160.dp)
                         .scale(pulseScale),
                     shape = CircleShape,
-                    color = if (isBusy) SecondaryBlue else if (isReady) MainBlue else Color.Gray,
+                    color = if (isBusy) SecondaryBlue else MainBlue,
                     shadowElevation = if (isBusy) 12.dp else 4.dp,
                     onClick = { 
-                        if (isReady) { 
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            viewModel.startAuthFlow() 
-                        } 
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        viewModel.startAuthFlow() 
                     },
-                    enabled = !isBusy && isReady
+                    enabled = !isBusy
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         if (isBusy) {
                             CircularProgressIndicator(color = Color.White, modifier = Modifier.size(40.dp))
                         } else {
                             Icon(
-                                imageVector = if (isReady) Icons.Default.LockOpen else Icons.Default.Lock,
+                                imageVector = Icons.Default.LockOpen,
                                 contentDescription = null,
                                 modifier = Modifier.size(64.dp),
                                 tint = Color.White
@@ -175,15 +161,10 @@ fun MainScreen(viewModel: MainViewModel, onLogout: () -> Unit) {
             
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = when {
-                    isBusy -> "Abriendo..."
-                    rssi <= -80 -> "Buscando portón..."
-                    rssi in -79..-71 -> "Acércate más"
-                    else -> "¡En rango! Toca para abrir"
-                },
+                text = if (isBusy) "Abriendo..." else "Toca para abrir",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (isReady) MainBlue else TextGray
+                color = MainBlue
             )
 
             Spacer(modifier = Modifier.height(24.dp))

@@ -38,8 +38,6 @@ class MainViewModel @Inject constructor(
     private val _bleState = MutableStateFlow(BleState.DISCONNECTED)
     val bleState: StateFlow<BleState> = _bleState.asStateFlow()
 
-    private val _rssi = MutableStateFlow(-100)
-    val rssi: StateFlow<Int> = _rssi.asStateFlow()
 
     private val _odooStatus = MutableStateFlow(OdooStatus.VERIFYING)
     val odooStatus: StateFlow<OdooStatus> = _odooStatus.asStateFlow()
@@ -72,13 +70,11 @@ class MainViewModel @Inject constructor(
     val userDataFlow = dataStore.userDataFlow
     val userPinFlow = dataStore.userPinFlow
 
-    private var proximityJob: Job? = null
     private var idVisibilityJob: Job? = null
     private var isOperationInProgress = false
 
     init {
         checkOdooStatus()
-        startDeviceDetection()
     }
 
     private fun checkOdooStatus() {
@@ -112,18 +108,6 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private fun startDeviceDetection() {
-        proximityJob?.cancel()
-        proximityJob = viewModelScope.launch {
-            while (true) {
-                if (!isOperationInProgress) {
-                    val isAvailable = gateRepository.checkAvailability()
-                    _rssi.value = if (isAvailable) -50 else -100
-                }
-                delay(2000)
-            }
-        }
-    }
 
     /** 
      * Inicia el flujo de apertura solicitando biometría primero.
@@ -202,7 +186,7 @@ class MainViewModel @Inject constructor(
                 val user = dataStore.userDataFlow.first() ?: throw Exception("Usuario no encontrado")
                 val idToSend = CryptoManager.decrypt(user.aid) ?: throw Exception("Error al desencriptar ID")
 
-                val result = withTimeoutOrNull(3_000) {
+                val result = withTimeoutOrNull(6_000) {
                     gateRepository.openGate(idToSend)
                 }
 
@@ -237,8 +221,6 @@ class MainViewModel @Inject constructor(
             } finally {
                 _bleState.value = BleState.DISCONNECTED
                 isOperationInProgress = false
-                val isAvailable = gateRepository.checkAvailability()
-                _rssi.value = if (isAvailable) -50 else -100
             }
         }
     }

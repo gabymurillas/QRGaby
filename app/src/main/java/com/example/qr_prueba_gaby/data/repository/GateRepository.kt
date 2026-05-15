@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
+import android.bluetooth.BluetoothDevice
 
 sealed class GateResult {
     object Success : GateResult()
@@ -101,26 +102,24 @@ class GateRepository(
             Log.e("GateRepository", "Error: ${e.message}")
             GateResult.Error(e.message ?: "Error de conexión Bluetooth")
         } finally {
-            try { socket?.close() } catch (_: Exception) {}
-            Log.d("GateRepository", "Socket cerrado")
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    suspend fun checkAvailability(): Boolean = withContext(Dispatchers.IO) {
-        val adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager)
-            .adapter ?: return@withContext false
-        if (!adapter.isEnabled) return@withContext false
-
-        var socket: BluetoothSocket? = null
-        return@withContext try {
-            socket = adapter.getRemoteDevice(TARGET_MAC)
-                .createRfcommSocketToServiceRecord(SPP_UUID)
-            withTimeoutOrNull(2500) { socket.connect() } != null
-        } catch (e: Exception) {
-            false
-        } finally {
-            try { socket?.close() } catch (_: Exception) {}
+            try {
+                socket?.close()
+                Log.d("GateRepository", "Socket cerrado")
+                
+                // Desvincular (quitar emparejamiento) para asegurar que no permanezca conectado/vinculado
+                val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+                val adapter = bluetoothManager.adapter
+                if (adapter != null) {
+                    val device = adapter.getRemoteDevice(TARGET_MAC)
+                    if (device.bondState != BluetoothDevice.BOND_NONE) {
+                        Log.d("GateRepository", "Desvinculando dispositivo...")
+                        val method = device.javaClass.getMethod("removeBond")
+                        method.invoke(device)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("GateRepository", "Error en desconexión: ${e.message}")
+            }
         }
     }
 }

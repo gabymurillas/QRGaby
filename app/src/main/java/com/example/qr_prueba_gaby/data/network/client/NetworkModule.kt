@@ -15,7 +15,10 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private const val BASE_URL = "http://172.17.2.212:8059/"
+    // Placeholder técnico: Retrofit exige una baseUrl no-vacía al construirse,
+    // pero NUNCA se usa en la red. DynamicEndpointInterceptor reescribe cada
+    // request con el endpoint real recibido en el QR del administrador.
+    private const val PLACEHOLDER_BASE_URL = "http://placeholder.invalid/"
 
     @Provides
     @Singleton
@@ -27,8 +30,12 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(loggingInterceptor: HttpLoggingInterceptor): OkHttpClient {
+    fun provideOkHttpClient(
+        loggingInterceptor: HttpLoggingInterceptor,
+        dynamicEndpointInterceptor: DynamicEndpointInterceptor
+    ): OkHttpClient {
         return OkHttpClient.Builder()
+            .addInterceptor(dynamicEndpointInterceptor) // reescribe URL → debe ir antes del logger
             .addInterceptor(loggingInterceptor)
             .build()
     }
@@ -37,7 +44,7 @@ object NetworkModule {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(PLACEHOLDER_BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
