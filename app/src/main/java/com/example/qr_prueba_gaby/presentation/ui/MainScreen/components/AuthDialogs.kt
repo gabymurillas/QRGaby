@@ -23,7 +23,12 @@ import com.example.qr_prueba_gaby.presentation.ui.theme.*
 import kotlinx.coroutines.delay
 
 @Composable
-fun PinEntryDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit, error: String? = null) {
+fun PinEntryDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+    error: String? = null,
+    onForgotPin: () -> Unit
+) {
     var pin by remember { mutableStateOf("") }
     LaunchedEffect(pin) {
         if (pin.length == 4) {
@@ -37,7 +42,8 @@ fun PinEntryDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit, error: St
         pin = pin,
         onPinChange = { if (it.length <= 4) pin = it },
         onDismiss = onDismiss,
-        error = error
+        error = error,
+        onForgotPin = onForgotPin
     )
 }
 
@@ -83,7 +89,8 @@ private fun BasePinDialog(
     pin: String,
     onPinChange: (String) -> Unit,
     onDismiss: () -> Unit,
-    error: String?
+    error: String?,
+    onForgotPin: (() -> Unit)? = null
 ) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
@@ -102,8 +109,19 @@ private fun BasePinDialog(
                     onNumberClick = { if (pin.length < 4) onPinChange(pin + it) },
                     onDeleteClick = { if (pin.isNotEmpty()) onPinChange(pin.dropLast(1)) }
                 )
-                TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.Start)) {
-                    Text("Cancelar", color = TextSecondary)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancelar", color = TextSecondary)
+                    }
+                    if (onForgotPin != null) {
+                        TextButton(onClick = onForgotPin) {
+                            Text("¿Olvidó su PIN?", color = MainBlue)
+                        }
+                    }
                 }
             }
         }

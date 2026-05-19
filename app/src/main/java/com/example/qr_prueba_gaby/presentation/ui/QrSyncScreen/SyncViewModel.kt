@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.qr_prueba_gaby.data.network.service.ApiService
 import com.example.qr_prueba_gaby.data.pref.UserDataStore
 import com.example.qr_prueba_gaby.utils.CryptoManager
 import com.google.zxing.BarcodeFormat
@@ -29,17 +28,12 @@ private const val EXPECTED_TOKEN = "ALCARAVAN_2025"
 
 @HiltViewModel
 class SyncViewModel @Inject constructor(
-    private val dataStore: UserDataStore,
-    private val apiService: ApiService
+    private val dataStore: UserDataStore
 ) : ViewModel() {
 
     // ── Estado del QR del usuario ─────────────────────────────────────────────
     private val _qrBitmap = MutableStateFlow<Bitmap?>(null)
     val qrBitmap: StateFlow<Bitmap?> = _qrBitmap.asStateFlow()
-
-    // ── Estado de validación por endpoint ────────────────────────────────────
-    private val _isValidating = MutableStateFlow(false)
-    val isValidating: StateFlow<Boolean> = _isValidating.asStateFlow()
 
     // ── ID técnico visible ───────────────────────────────────────────────────
     private val _decryptedAndroidId = MutableStateFlow<String?>(null)
@@ -82,13 +76,12 @@ class SyncViewModel @Inject constructor(
      * Protocolo esperado (JSON):
      * ```json
      * {
-     *   "endpoint"   : "https://backend.ejemplo.com",
-     *   "target_mac" : "E0:5A:1B:31:29:6E",
-     *   "token"      : "ALCARAVAN_2025"
+     *   "endpoint" : "http://172.17.12.119:8059",
+     *   "token"    : "ALCARAVAN_2025"
      * }
      * ```
-     * Si el JSON es válido y el token correcto, guarda los datos en el DataStore
-     * y activa la llave digital del usuario.
+     * Si el JSON es válido y el token correcto, guarda el endpoint en el
+     * DataStore y activa la llave digital del usuario.
      */
     fun processProvisioningQr(rawJson: String) {
         viewModelScope.launch {
@@ -98,7 +91,6 @@ class SyncViewModel @Inject constructor(
             try {
                 val json     = JSONObject(rawJson)
                 val endpoint = json.getString("endpoint")
-                val mac      = json.getString("target_mac")
                 val token    = json.getString("token")
 
                 if (token != EXPECTED_TOKEN) {
@@ -107,14 +99,14 @@ class SyncViewModel @Inject constructor(
                     return@launch
                 }
 
-                if (endpoint.isBlank() || mac.isBlank()) {
+                if (endpoint.isBlank()) {
                     _provisioningSuccess.value  = false
-                    _provisioningMessage.value  = "QR inválido: endpoint o MAC vacíos."
+                    _provisioningMessage.value  = "QR inválido: el endpoint está vacío."
                     return@launch
                 }
 
-                // Guardar datos y activar la llave digital
-                dataStore.saveProvisioningData(endpoint = endpoint, mac = mac)
+                // Guardar el endpoint y activar la llave digital
+                dataStore.saveProvisioningData(endpoint = endpoint)
                 dataStore.setActivated(true)
                 dataStore.setRegistered(true)
 
@@ -138,7 +130,7 @@ class SyncViewModel @Inject constructor(
     }
 
     // ────────────────────────────────────────────────────────────────────────
-    // Validación por endpoint (flujo original sin cambios)
+    // Generación del QR de identificación del conductor
     // ────────────────────────────────────────────────────────────────────────
 
     private fun generateQrFromStoredData() {
@@ -150,27 +142,6 @@ class SyncViewModel @Inject constructor(
                     }
                     _qrBitmap.value = bitmap
                 }
-            }
-        }
-    }
-
-    fun validateOnEndpoint(cedula: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
-        if (_isValidating.value) return
-        viewModelScope.launch {
-            _isValidating.value = true
-            try {
-                val response = apiService.syncVehicular(cedula)
-                if (response.isSuccessful && response.body()?.result?.status == "success") {
-                    dataStore.setActivated(true)
-                    dataStore.setRegistered(true)
-                    onSuccess()
-                } else {
-                    onError(response.body()?.result?.message ?: "Error de validación")
-                }
-            } catch (e: Exception) {
-                onError("Error de conexión: ${e.localizedMessage}")
-            } finally {
-                _isValidating.value = false
             }
         }
     }

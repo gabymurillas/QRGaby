@@ -24,9 +24,8 @@ class UserDataStore(private val context: Context) {
         private val KEY_IS_ACTIVATED    = booleanPreferencesKey("is_activated")
         private val KEY_USER_JSON       = stringPreferencesKey("user_json")
         private val KEY_USER_PIN        = stringPreferencesKey("user_pin")
-        // Provisionamiento Bluetooth
+        // Provisionamiento por QR del Administrador
         private val KEY_URL_ENDPOINT    = stringPreferencesKey("url_endpoint")
-        private val KEY_MAC_DISPOSITIVO = stringPreferencesKey("mac_dispositivo")
     }
 
     /** Flow que emite true si el usuario ya está registrado y activo. */
@@ -49,14 +48,9 @@ class UserDataStore(private val context: Context) {
         prefs[KEY_USER_JSON]?.let { UserData.fromJson(it) }
     }
 
-    /** Flow con el endpoint recibido en el provisionamiento BT, o null si aún no se recibió. */
+    /** Flow con el endpoint recibido en el QR de aprovisionamiento, o null si aún no se recibió. */
     val urlEndpointFlow: Flow<String?> = context.dataStore.data.map { prefs ->
         prefs[KEY_URL_ENDPOINT]
-    }
-
-    /** Flow con la MAC del ESP32 recibida en el provisionamiento BT, o null si aún no se recibió. */
-    val macDispositivoFlow: Flow<String?> = context.dataStore.data.map { prefs ->
-        prefs[KEY_MAC_DISPOSITIVO]
     }
 
     /** Persiste los datos del usuario en DataStore. */
@@ -70,6 +64,13 @@ class UserDataStore(private val context: Context) {
     suspend fun savePin(pin: String) {
         context.dataStore.edit { prefs ->
             prefs[KEY_USER_PIN] = pin
+        }
+    }
+
+    /** Elimina el PIN de seguridad (lo desactiva). */
+    suspend fun clearPin() {
+        context.dataStore.edit { prefs ->
+            prefs.remove(KEY_USER_PIN)
         }
     }
 
@@ -88,13 +89,11 @@ class UserDataStore(private val context: Context) {
     }
 
     /**
-     * Persiste los datos de configuración recibidos en el provisionamiento Bluetooth.
-     * Guarda el endpoint del backend y la MAC física del ESP32.
+     * Persiste el endpoint del backend Odoo recibido en el QR de aprovisionamiento.
      */
-    suspend fun saveProvisioningData(endpoint: String, mac: String) {
+    suspend fun saveProvisioningData(endpoint: String) {
         context.dataStore.edit { prefs ->
-            prefs[KEY_URL_ENDPOINT]    = endpoint
-            prefs[KEY_MAC_DISPOSITIVO] = mac
+            prefs[KEY_URL_ENDPOINT] = endpoint
         }
     }
 

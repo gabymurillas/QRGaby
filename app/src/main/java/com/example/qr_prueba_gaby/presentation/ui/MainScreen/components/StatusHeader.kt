@@ -5,6 +5,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -19,7 +21,8 @@ import com.example.qr_prueba_gaby.presentation.ui.common.OdooStatus
 
 @Composable
 fun StatusHeader(
-    odooStatus: OdooStatus
+    odooStatus: OdooStatus,
+    onSettingsClick: () -> Unit
 ) {
     val statusColor by animateColorAsState(
         targetValue = when (odooStatus) {
@@ -46,9 +49,24 @@ fun StatusHeader(
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = if (odooStatus == OdooStatus.VALID) "Sincronizado" else "Sincronizando...",
+                text = when (odooStatus) {
+                    OdooStatus.VALID     -> "Sincronizado"
+                    OdooStatus.VERIFYING -> "Sincronizando..."
+                    OdooStatus.INVALID   -> "Usuario no encontrado"
+                    OdooStatus.OFFLINE   -> "Sin conexión"
+                },
                 fontSize = 12.sp,
                 color = TextGray
+            )
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        IconButton(onClick = onSettingsClick) {
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = "Ajustes",
+                tint = TextGray
             )
         }
     }

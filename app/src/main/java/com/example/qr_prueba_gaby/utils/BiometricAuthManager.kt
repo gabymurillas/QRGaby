@@ -24,6 +24,61 @@ object BiometricAuthManager {
     }
 
     /**
+     * Combinación de autenticadores para la recuperación del PIN: huella o la
+     * credencial del sistema (PIN/patrón/contraseña del teléfono).
+     *
+     * Se usa BIOMETRIC_WEAK (en vez de STRONG) porque la combinación
+     * STRONG | DEVICE_CREDENTIAL no es soportada en API 28-29; WEAK | DEVICE_CREDENTIAL
+     * funciona en todo el rango soportado por la app.
+     */
+    private const val RECOVERY_AUTHENTICATORS =
+        BiometricManager.Authenticators.BIOMETRIC_WEAK or
+            BiometricManager.Authenticators.DEVICE_CREDENTIAL
+
+    /**
+     * Indica si el dispositivo puede verificar al dueño con huella o con la
+     * credencial del sistema (bloqueo de pantalla). Si devuelve false, el
+     * teléfono no tiene ningún bloqueo configurado.
+     */
+    fun canVerifyOwner(activity: FragmentActivity): Boolean {
+        return BiometricManager.from(activity)
+            .canAuthenticate(RECOVERY_AUTHENTICATORS) == BiometricManager.BIOMETRIC_SUCCESS
+    }
+
+    /**
+     * Lanza un prompt que acepta huella o la credencial del sistema
+     * (PIN/patrón/contraseña del teléfono). Se usa para verificar al dueño
+     * durante la recuperación del PIN de seguridad.
+     */
+    fun showOwnerVerificationPrompt(
+        activity: FragmentActivity,
+        onSuccess: () -> Unit,
+        onFailed: () -> Unit
+    ) {
+        val executor = ContextCompat.getMainExecutor(activity)
+        val biometricPrompt = BiometricPrompt(activity, executor, object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                super.onAuthenticationSucceeded(result)
+                onSuccess()
+            }
+
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                super.onAuthenticationError(errorCode, errString)
+                onFailed()
+            }
+        })
+
+        // Con DEVICE_CREDENTIAL en los autenticadores NO se debe definir botón negativo.
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Verifica tu identidad")
+            .setSubtitle("Usa tu huella o el bloqueo de tu teléfono para recuperar el PIN")
+            .setAllowedAuthenticators(RECOVERY_AUTHENTICATORS)
+            .build()
+
+        biometricPrompt.authenticate(promptInfo)
+    }
+
+    /**
      * Lanza el prompt de autenticación biométrica.
      */
     fun showBiometricPrompt(

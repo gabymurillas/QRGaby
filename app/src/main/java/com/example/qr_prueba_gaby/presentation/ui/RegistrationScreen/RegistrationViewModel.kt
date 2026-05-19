@@ -38,7 +38,9 @@ class RegistrationViewModel @Inject constructor(
     val registrationError: StateFlow<String?> = _registrationError.asStateFlow()
 
     fun onNombreChange(value: String) {
-        _nombre.value = value
+        // Solo letras sin acentos y espacios: descarta acentos, ñ, dígitos y
+        // caracteres especiales que podrían romper el JSON del QR del conductor.
+        _nombre.value = value.filter { it in 'a'..'z' || it in 'A'..'Z' || it == ' ' }
         _registrationError.value = null
     }
 
@@ -51,9 +53,13 @@ class RegistrationViewModel @Inject constructor(
     }
 
     fun onPlateChange(index: Int, value: String) {
+        // Solo letras y dígitos (sin acentos, guiones ni caracteres especiales).
+        val sanitized = value.uppercase()
+            .filter { it in 'A'..'Z' || it in '0'..'9' }
+            .take(8)
         val updated = _plates.value.toMutableList()
         if (index < updated.size) {
-            updated[index] = value.uppercase().take(8)
+            updated[index] = sanitized
         }
         _plates.value = updated
         _registrationError.value = null

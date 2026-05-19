@@ -12,12 +12,37 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.qr_prueba_gaby.presentation.ui.common.OdooStatus
 import com.example.qr_prueba_gaby.presentation.ui.theme.MainBlue
 import com.example.qr_prueba_gaby.presentation.ui.theme.TextGray
 
+/**
+ * Tarjeta de estado del sistema. Refleja el mismo [OdooStatus] que el
+ * indicador de sincronización del encabezado, para que ambos "hablen el
+ * mismo idioma".
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SystemStatusCard() {
+fun SystemStatusCard(odooStatus: OdooStatus) {
+    val accent = when (odooStatus) {
+        OdooStatus.VALID     -> MainBlue
+        OdooStatus.VERIFYING -> Color(0xFFF59E0B)
+        OdooStatus.INVALID   -> Color(0xFFDC2626)
+        OdooStatus.OFFLINE   -> Color(0xFF6B7280)
+    }
+    val title = when (odooStatus) {
+        OdooStatus.VALID     -> "Activo"
+        OdooStatus.VERIFYING -> "Verificando..."
+        OdooStatus.INVALID   -> "No encontrado"
+        OdooStatus.OFFLINE   -> "Sin conexión"
+    }
+    val badgeText = when (odooStatus) {
+        OdooStatus.VALID     -> "VERIFICADO"
+        OdooStatus.VERIFYING -> "VERIFICANDO"
+        OdooStatus.INVALID   -> "NO VERIFICADO"
+        OdooStatus.OFFLINE   -> "SIN CONEXIÓN"
+    }
+
     ElevatedCard(
         modifier = Modifier.fillMaxWidth().height(90.dp),
         shape = RoundedCornerShape(24.dp)
@@ -30,7 +55,7 @@ fun SystemStatusCard() {
                 Surface(
                     modifier = Modifier.size(48.dp),
                     shape = RoundedCornerShape(14.dp),
-                    color = MainBlue
+                    color = accent
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
@@ -50,20 +75,21 @@ fun SystemStatusCard() {
                         color = TextGray
                     )
                     Text(
-                        text = "Activo",
+                        text = title,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MainBlue
+                        color = accent,
+                        maxLines = 1
                     )
                 }
             }
             Badge(
                 modifier = Modifier.align(Alignment.TopEnd).padding(top = 16.dp, end = 16.dp),
-                containerColor = Color(0xFFE0E7FF),
-                contentColor = Color(0xFF4338CA)
+                containerColor = accent.copy(alpha = 0.15f),
+                contentColor = accent
             ) {
                 Text(
-                    text = "VERIFICADO",
+                    text = badgeText,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Black

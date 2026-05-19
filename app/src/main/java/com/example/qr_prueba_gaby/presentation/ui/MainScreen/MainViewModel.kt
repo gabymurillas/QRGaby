@@ -1,16 +1,13 @@
 package com.example.qr_prueba_gaby.presentation.ui.MainScreen
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.qr_prueba_gaby.data.model.UserData
 import com.example.qr_prueba_gaby.data.network.service.ApiService
-import com.example.qr_prueba_gaby.data.network.service.GateOpenRequest
+import com.example.qr_prueba_gaby.data.network.service.ControlAccesoParams
+import com.example.qr_prueba_gaby.data.network.service.GateOpenParams
 import com.example.qr_prueba_gaby.data.network.service.OdooRequest
 import com.example.qr_prueba_gaby.data.pref.UserDataStore
-import com.example.qr_prueba_gaby.data.repository.GateRepository
-import com.example.qr_prueba_gaby.data.repository.GateResult
-import com.example.qr_prueba_gaby.presentation.ui.common.BleState
+import com.example.qr_prueba_gaby.presentation.ui.common.GateState
 import com.example.qr_prueba_gaby.presentation.ui.common.OdooStatus
 import com.example.qr_prueba_gaby.utils.CryptoManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,19 +21,21 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import org.json.JSONException
+import org.json.JSONObject
 import javax.inject.Inject
+
+/** Token de seguridad que debe traer el QR generado por la app Admin. */
+private const val EXPECTED_TOKEN = "ALCARAVAN_2025"
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val dataStore: UserDataStore,
-    private val apiService: ApiService,
-    private val gateRepository: GateRepository
+    private val apiService: ApiService
 ) : ViewModel() {
 
-    private val _bleState = MutableStateFlow(BleState.DISCONNECTED)
-    val bleState: StateFlow<BleState> = _bleState.asStateFlow()
+    private val _gateState = MutableStateFlow(GateState.IDLE)
+    val gateState: StateFlow<GateState> = _gateState.asStateFlow()
 
 
     private val _odooStatus = MutableStateFlow(OdooStatus.VERIFYING)
@@ -51,8 +50,12 @@ class MainViewModel @Inject constructor(
     private val _idVisibilityProgress = MutableStateFlow(0f)
     val idVisibilityProgress: StateFlow<Float> = _idVisibilityProgress.asStateFlow()
 
-    private val _unauthorizedEvent = MutableSharedFlow<Unit>()
-    val unauthorizedEvent = _unauthorizedEvent.asSharedFlow()
+    // ── Estado del re-escaneo del QR del Administrador (cambio de IP) ──
+    private val _reprovisionSuccess = MutableStateFlow<Boolean?>(null)
+    val reprovisionSuccess: StateFlow<Boolean?> = _reprovisionSuccess.asStateFlow()
+
+    private val _reprovisionMessage = MutableStateFlow<String?>(null)
+    val reprovisionMessage: StateFlow<String?> = _reprovisionMessage.asStateFlow()
 
     // ── Estados de Seguridad (PIN y Diálogos) ──
     private val _isPinEntryVisible = MutableStateFlow(false)
@@ -67,6 +70,14 @@ class MainViewModel @Inject constructor(
     private val _authRequestTrigger = MutableSharedFlow<Unit>()
     val authRequestTrigger = _authRequestTrigger.asSharedFlow()
 
+    /** Evento para lanzar la verificación de identidad en la recuperación del PIN. */
+    private val _pinRecoveryTrigger = MutableSharedFlow<Unit>()
+    val pinRecoveryTrigger = _pinRecoveryTrigger.asSharedFlow()
+
+    /** Visibilidad del modal de ajustes de seguridad. */
+    private val _isSettingsVisible = MutableStateFlow(false)
+    val isSettingsVisible = _isSettingsVisible.asStateFlow()
+
     val userDataFlow = dataStore.userDataFlow
     val userPinFlow = dataStore.userPinFlow
 
@@ -77,28 +88,34 @@ class MainViewModel @Inject constructor(
         checkOdooStatus()
     }
 
+    /**
+     * Verifica periódicamente el estado del conductor contra Odoo.
+     *
+     * Es SOLO un indicador visual: nunca cierra sesión ni borra el registro.
+     * El registro del conductor es único y persistente; el único logout es
+     * el manual desde el botón de la UI.
+     */
     private fun checkOdooStatus() {
         viewModelScope.launch {
             while (true) {
                 try {
                     val user = userDataFlow.first()
                     if (user != null) {
-                        // RECOMENDACIÓN: Solo mostrar amarillo si no estamos ya en VALID
+                        // Solo mostrar "verificando" si no estamos ya en VALID
                         if (_odooStatus.value != OdooStatus.VALID) {
                             _odooStatus.value = OdooStatus.VERIFYING
                         }
-                        
-                        val response = apiService.syncVehicular(user.c)
 
-                        if (response.isSuccessful && response.body()?.result?.status == "success") {
-                            _odooStatus.value = OdooStatus.VALID
-                        } else {
-                            _odooStatus.value = OdooStatus.INVALID
-                            logout {
-                                viewModelScope.launch { _unauthorizedEvent.emit(Unit) }
+                        val response = apiService.syncVehicular(
+                            OdooRequest(ControlAccesoParams(action = "read", cedula = user.c))
+                        )
+
+                        _odooStatus.value =
+                            if (response.isSuccessful && response.body()?.result?.status == "success") {
+                                OdooStatus.VALID
+                            } else {
+                                OdooStatus.INVALID
                             }
-                            return@launch
-                        }
                     }
                 } catch (e: Exception) {
                     _odooStatus.value = OdooStatus.OFFLINE
@@ -114,7 +131,7 @@ class MainViewModel @Inject constructor(
      * Es llamado desde el botón "Abrir" de la UI.
      */
     fun startAuthFlow() {
-        if (_bleState.value == BleState.CONNECTING || isOperationInProgress) return
+        if (_gateState.value == GateState.REQUESTING || isOperationInProgress) return
         
         viewModelScope.launch {
             // Enviamos un evento para que el MainScreen (Activity) lance BiometricPrompt
@@ -129,16 +146,30 @@ class MainViewModel @Inject constructor(
         openGate()
     }
 
-    /** 
-     * Se llama si la biometría falla o se elige PIN.
+    /**
+     * El dispositivo NO tiene biometría configurada.
+     * - Con PIN activado    → se pide el PIN.
+     * - Con PIN desactivado → apertura directa (no hay segundo factor).
      */
-    fun onBiometricFailureOrPIN() {
+    fun onBiometricUnavailable() {
         viewModelScope.launch {
-            val hasPin = userPinFlow.first() != null
-            if (hasPin) {
+            if (userPinFlow.first() != null) {
                 _isPinEntryVisible.value = true
             } else {
-                _isPinSetupVisible.value = true
+                openGate()
+            }
+        }
+    }
+
+    /**
+     * La biometría existía pero falló o el usuario la canceló.
+     * - Con PIN activado    → se pide el PIN como alternativa.
+     * - Con PIN desactivado → no se abre (el usuario canceló la huella).
+     */
+    fun onBiometricFailedOrCancelled() {
+        viewModelScope.launch {
+            if (userPinFlow.first() != null) {
+                _isPinEntryVisible.value = true
             }
         }
     }
@@ -160,13 +191,13 @@ class MainViewModel @Inject constructor(
     }
 
     /**
-     * Guarda el PIN por primera vez.
+     * Guarda el PIN definido por el usuario (al activarlo, cambiarlo o
+     * recuperarlo). No abre el portón: el PIN ya no es parte forzada del flujo.
      */
     fun setupPin(newPin: String) {
         viewModelScope.launch {
             dataStore.savePin(newPin)
             _isPinSetupVisible.value = false
-            openGate()
         }
     }
 
@@ -176,50 +207,136 @@ class MainViewModel @Inject constructor(
         _pinError.value = null
     }
 
+    // ── Ajustes de seguridad: PIN opcional ───────────────────────────────────
+
+    fun openSettings()  { _isSettingsVisible.value = true }
+    fun closeSettings() { _isSettingsVisible.value = false }
+
+    /**
+     * Activa o desactiva el PIN de seguridad.
+     * - Activar    → abre el diálogo para que el usuario cree su PIN.
+     * - Desactivar → elimina el PIN guardado.
+     */
+    fun setPinEnabled(enabled: Boolean) {
+        if (enabled) {
+            _isPinSetupVisible.value = true
+        } else {
+            viewModelScope.launch { dataStore.clearPin() }
+        }
+    }
+
+    /** Abre el diálogo para cambiar el PIN actual. */
+    fun requestChangePin() {
+        _isPinSetupVisible.value = true
+    }
+
+    // ── Recuperación del PIN olvidado ────────────────────────────────────────
+
+    /** Inicia la recuperación del PIN: dispara la verificación de identidad. */
+    fun startPinRecovery() {
+        viewModelScope.launch { _pinRecoveryTrigger.emit(Unit) }
+    }
+
+    /**
+     * Se llama cuando la identidad del dueño quedó verificada (huella o
+     * credencial del teléfono), o cuando el teléfono no tiene ningún bloqueo
+     * configurado. Permite establecer un PIN nuevo.
+     */
+    fun onPinRecoveryVerified() {
+        _isPinEntryVisible.value = false
+        _pinError.value = null
+        _isPinSetupVisible.value = true
+    }
+
+    /**
+     * Re-aplica el QR de aprovisionamiento del Administrador.
+     *
+     * Se usa cuando cambia la IP/endpoint del servidor Odoo: sobrescribe el
+     * endpoint guardado SIN tocar el estado de registro ni de activación,
+     * de modo que el registro del conductor sigue siendo único y persistente.
+     */
+    fun reprovision(rawJson: String) {
+        viewModelScope.launch {
+            _reprovisionSuccess.value = null
+            _reprovisionMessage.value = null
+            try {
+                val json     = JSONObject(rawJson)
+                val endpoint = json.getString("endpoint")
+                val token    = json.optString("token", "")
+
+                when {
+                    token != EXPECTED_TOKEN -> {
+                        _reprovisionSuccess.value = false
+                        _reprovisionMessage.value = "QR inválido: token de seguridad incorrecto."
+                    }
+                    endpoint.isBlank() -> {
+                        _reprovisionSuccess.value = false
+                        _reprovisionMessage.value = "QR inválido: el endpoint está vacío."
+                    }
+                    else -> {
+                        dataStore.saveProvisioningData(endpoint = endpoint)
+                        _reprovisionSuccess.value = true
+                        _reprovisionMessage.value = "Servidor actualizado correctamente."
+                    }
+                }
+            } catch (e: JSONException) {
+                _reprovisionSuccess.value = false
+                _reprovisionMessage.value = "El QR no contiene datos válidos."
+            } catch (e: Exception) {
+                _reprovisionSuccess.value = false
+                _reprovisionMessage.value = "Error inesperado: ${e.localizedMessage}"
+            }
+        }
+    }
+
+    /** Reinicia el estado del re-escaneo para permitir un nuevo intento. */
+    fun resetReprovisionState() {
+        _reprovisionSuccess.value = null
+        _reprovisionMessage.value = null
+    }
+
+    /**
+     * Solicita la apertura remota del portón al servidor Odoo.
+     *
+     * En V6 la app ya no se comunica con el ESP32: envía la cédula del conductor
+     * a Odoo, que valida la autorización y dispara el relé del ESP32.
+     */
     private fun openGate() {
-        if (_bleState.value == BleState.CONNECTING || isOperationInProgress) return
-        _bleState.value = BleState.CONNECTING
+        if (_gateState.value == GateState.REQUESTING || isOperationInProgress) return
+        _gateState.value = GateState.REQUESTING
         isOperationInProgress = true
 
         viewModelScope.launch {
             try {
                 val user = dataStore.userDataFlow.first() ?: throw Exception("Usuario no encontrado")
-                val idToSend = CryptoManager.decrypt(user.aid) ?: throw Exception("Error al desencriptar ID")
 
-                val result = withTimeoutOrNull(6_000) {
-                    gateRepository.openGate(idToSend)
+                val response = withTimeoutOrNull(10_000) {
+                    apiService.requestGateOpen(OdooRequest(GateOpenParams(cedula = user.c)))
                 }
 
-                if (result == null) {
-                    _bleState.value = BleState.ERROR
-                    _gateMessage.value = "Tardó demasiado, vuelve a intentarlo"
-                    delay(2000)
-                } else if (result is GateResult.Success) {
-                    _bleState.value = BleState.SENT
-                    _gateMessage.value = "¡Acceso Concedido!"
-
-                    viewModelScope.launch {
-                        try {
-                            val timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-                            val request = GateOpenRequest(
-                                cedula = user.c,
-                                fecha_hora = timestamp
-                            )
-                            apiService.logGateOpen(OdooRequest(request))
-                        } catch (apiError: Exception) {
-                            Log.e("MainViewModel", "Error al registrar apertura: ${apiError.message}")
-                        }
+                when {
+                    response == null -> {
+                        _gateState.value = GateState.ERROR
+                        _gateMessage.value = "El servidor tardó demasiado, intenta de nuevo"
                     }
-                    delay(1000)
-                } else if (result is GateResult.Error) {
-                    throw Exception(result.message)
+                    response.isSuccessful && response.body()?.result?.status == "success" -> {
+                        _gateState.value = GateState.OPENED
+                        _gateMessage.value = "¡Acceso Concedido!"
+                    }
+                    else -> {
+                        _gateState.value = GateState.ERROR
+                        _gateMessage.value = response.body()?.result?.message
+                            ?: response.body()?.error?.message
+                            ?: "Acceso denegado por el servidor"
+                    }
                 }
+                delay(1500)
             } catch (e: Exception) {
-                _bleState.value = BleState.ERROR
-                _gateMessage.value = e.message
+                _gateState.value = GateState.ERROR
+                _gateMessage.value = "Error de conexión: ${e.localizedMessage}"
                 delay(2000)
             } finally {
-                _bleState.value = BleState.DISCONNECTED
+                _gateState.value = GateState.IDLE
                 isOperationInProgress = false
             }
         }

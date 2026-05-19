@@ -21,7 +21,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.qr_prueba_gaby.presentation.ui.MainScreen.MainScreen
 import com.example.qr_prueba_gaby.presentation.ui.MainScreen.MainViewModel
-import com.example.qr_prueba_gaby.presentation.ui.PermissionsScreen.PermissionsScreen
 import com.example.qr_prueba_gaby.presentation.ui.QrSyncScreen.QrSyncScreen
 import com.example.qr_prueba_gaby.presentation.ui.QrSyncScreen.SyncViewModel
 import com.example.qr_prueba_gaby.presentation.ui.RegistrationScreen.RegistrationScreen
@@ -33,7 +32,6 @@ import dagger.hilt.android.AndroidEntryPoint
 // Rutas de navegación
 private const val ROUTE_REGISTRATION  = "registration"
 private const val ROUTE_QR_SYNC       = "qr_sync"
-private const val ROUTE_PERMISSIONS   = "permissions"
 private const val ROUTE_MAIN          = "main"
 
 @AndroidEntryPoint
@@ -105,12 +103,14 @@ private fun AppNavigation() {
         }
 
         // ── Pantalla 2: QR de sincronización ──
+        // El permiso de cámara se solicita dentro de QrSyncScreen, justo antes
+        // de abrir el escáner; por eso ya no existe una pantalla de permisos.
         composable(ROUTE_QR_SYNC) {
             val syncVM: SyncViewModel = hiltViewModel()
             QrSyncScreen(
                 viewModel = syncVM,
                 onActivated = {
-                    navController.navigate(ROUTE_PERMISSIONS) {
+                    navController.navigate(ROUTE_MAIN) {
                         popUpTo(ROUTE_QR_SYNC) { inclusive = true }
                     }
                 },
@@ -122,18 +122,7 @@ private fun AppNavigation() {
             )
         }
 
-        // ── Gate: permisos BLE ──
-        composable(ROUTE_PERMISSIONS) {
-            PermissionsScreen(
-                onPermissionsGranted = {
-                    navController.navigate(ROUTE_MAIN) {
-                        popUpTo(ROUTE_PERMISSIONS) { inclusive = true }
-                    }
-                }
-            )
-        }
-
-        // ── Pantalla 4: Dashboard Principal ──
+        // ── Pantalla 3: Dashboard Principal ──
         composable(ROUTE_MAIN) {
             val mainVM: MainViewModel = hiltViewModel()
             MainScreen(

@@ -41,14 +41,11 @@ fun QrSyncScreen(
     val qrBitmap          by viewModel.qrBitmap.collectAsState()
     val isActivated       by viewModel.isActivatedFlow.collectAsStateWithLifecycle(null)
     val userData          by viewModel.userDataFlow.collectAsStateWithLifecycle(null)
-    val isValidating      by viewModel.isValidating.collectAsStateWithLifecycle(false)
     val provSuccess       by viewModel.provisioningSuccess.collectAsStateWithLifecycle()
     val provMessage       by viewModel.provisioningMessage.collectAsStateWithLifecycle()
 
     val decryptedId       by viewModel.decryptedAndroidId.collectAsStateWithLifecycle()
     val idProgress        by viewModel.idVisibilityProgress.collectAsStateWithLifecycle()
-
-    var validationError   by remember { mutableStateOf<String?>(null) }
 
     // ── Permiso de cámara ────────────────────────────────────────────────────
     val cameraPermission  = rememberPermissionState(android.Manifest.permission.CAMERA)
@@ -364,34 +361,6 @@ fun QrSyncScreen(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-
-            // ── Botón secundario: verificación manual por endpoint ──────────
-            OutlinedButton(
-                onClick = {
-                    validationError = null
-                    viewModel.validateOnEndpoint(
-                        cedula = userData?.c ?: "",
-                        onSuccess = { onActivated() },
-                        onError = { validationError = it }
-                    )
-                },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = NavyBlue),
-                enabled = !isValidating && isActivated != true
-            ) {
-                if (isValidating) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = NavyBlue, strokeWidth = 2.dp)
-                } else {
-                    Icon(imageVector = Icons.Default.Sync, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Verificar por servidor", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                }
-            }
-
-            AnimatedVisibility(visible = validationError != null) {
-                Text(text = validationError ?: "", color = Color.Red, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 12.dp))
-            }
 
             TextButton(onClick = { onReset() }, modifier = Modifier.padding(top = 8.dp)) {
                 Text("Volver a editar perfil", color = TextGray)
