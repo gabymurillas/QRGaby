@@ -1,19 +1,17 @@
 package com.example.qr_prueba_gaby.app.host
 
 import android.os.Bundle
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
-import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
@@ -25,11 +23,15 @@ import com.example.qr_prueba_gaby.presentation.ui.QrSyncScreen.QrSyncScreen
 import com.example.qr_prueba_gaby.presentation.ui.QrSyncScreen.SyncViewModel
 import com.example.qr_prueba_gaby.presentation.ui.RegistrationScreen.RegistrationScreen
 import com.example.qr_prueba_gaby.presentation.ui.RegistrationScreen.RegistrationViewModel
+import com.example.qr_prueba_gaby.presentation.ui.SplashScreen.SplashScreen
+import com.example.qr_prueba_gaby.data.model.ThemeMode
 import com.example.qr_prueba_gaby.presentation.ui.theme.QRPRUEBAGABYTheme
+import com.example.qr_prueba_gaby.presentation.ui.theme.ThemeViewModel
 
 import dagger.hilt.android.AndroidEntryPoint
 
 // Rutas de navegación
+private const val ROUTE_SPLASH        = "splash"
 private const val ROUTE_REGISTRATION  = "registration"
 private const val ROUTE_QR_SYNC       = "qr_sync"
 private const val ROUTE_MAIN          = "main"
@@ -37,25 +39,26 @@ private const val ROUTE_MAIN          = "main"
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
-        
-        // Configurar Barras Transparentes con Iconos Oscuros (para fondo claro)
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.light(
-                android.graphics.Color.TRANSPARENT,
-                android.graphics.Color.TRANSPARENT
-            ),
-            navigationBarStyle = SystemBarStyle.light(
-                android.graphics.Color.TRANSPARENT,
-                android.graphics.Color.TRANSPARENT
-            )
-        )
-        
+
+        // Barras transparentes; los iconos se adaptan al tema desde QRPRUEBAGABYTheme.
+        enableEdgeToEdge()
+
         setContent {
-            QRPRUEBAGABYTheme {
+            // El modo de tema persistido decide entre claro y oscuro.
+            val themeViewModel: ThemeViewModel = hiltViewModel()
+            val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
+            val darkTheme = when (themeMode) {
+                ThemeMode.LIGHT  -> false
+                ThemeMode.DARK   -> true
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+
+            QRPRUEBAGABYTheme(darkTheme = darkTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFF0D1117)
+                    color = MaterialTheme.colorScheme.background
                 ) {
                     AppNavigation()
                 }
@@ -68,27 +71,22 @@ class MainActivity : FragmentActivity() {
 private fun AppNavigation() {
     val navController = rememberNavController()
 
-    // Usamos el SyncViewModel solo para chequear el estado inicial de activación
-    val syncViewModel: SyncViewModel = hiltViewModel()
-    val isActivated by syncViewModel.isActivatedFlow.collectAsStateWithLifecycle()
-
-    // Pantalla de carga mientras se determina el destino inicial
-    if (isActivated == null) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(color = Color.Cyan)
-        }
-        return
-    }
-
-    val startDestination = if (isActivated == true) ROUTE_MAIN else ROUTE_REGISTRATION
-
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = ROUTE_SPLASH
     ) {
+        // ── Splash: animación inicial + resolución de destino ──
+        composable(ROUTE_SPLASH) {
+            val syncViewModel: SyncViewModel = hiltViewModel()
+            val isActivated by syncViewModel.isActivatedFlow.collectAsStateWithLifecycle()
+            SplashScreen(isActivated = isActivated) { activated ->
+                val destination = if (activated) ROUTE_MAIN else ROUTE_REGISTRATION
+                navController.navigate(destination) {
+                    popUpTo(ROUTE_SPLASH) { inclusive = true }
+                }
+            }
+        }
+
         // ── Pantalla 1: Registro ──
         composable(ROUTE_REGISTRATION) {
             val regViewModel: RegistrationViewModel = hiltViewModel()

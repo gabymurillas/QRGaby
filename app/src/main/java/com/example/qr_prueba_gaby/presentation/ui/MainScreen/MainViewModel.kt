@@ -6,6 +6,7 @@ import com.example.qr_prueba_gaby.data.network.service.ApiService
 import com.example.qr_prueba_gaby.data.network.service.ControlAccesoParams
 import com.example.qr_prueba_gaby.data.network.service.GateOpenParams
 import com.example.qr_prueba_gaby.data.network.service.OdooRequest
+import com.example.qr_prueba_gaby.data.model.ThemeMode
 import com.example.qr_prueba_gaby.data.pref.UserDataStore
 import com.example.qr_prueba_gaby.presentation.ui.common.GateState
 import com.example.qr_prueba_gaby.presentation.ui.common.OdooStatus
@@ -15,10 +16,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONException
@@ -80,6 +83,10 @@ class MainViewModel @Inject constructor(
 
     val userDataFlow = dataStore.userDataFlow
     val userPinFlow = dataStore.userPinFlow
+
+    /** Modo de tema persistido (Sistema / Claro / Oscuro). */
+    val themeMode: StateFlow<ThemeMode> = dataStore.themeModeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemeMode.SYSTEM)
 
     private var idVisibilityJob: Job? = null
     private var isOperationInProgress = false
@@ -211,6 +218,11 @@ class MainViewModel @Inject constructor(
 
     fun openSettings()  { _isSettingsVisible.value = true }
     fun closeSettings() { _isSettingsVisible.value = false }
+
+    /** Cambia el modo de tema de la app y lo persiste. */
+    fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch { dataStore.saveThemeMode(mode) }
+    }
 
     /**
      * Activa o desactiva el PIN de seguridad.

@@ -16,7 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.qr_prueba_gaby.presentation.ui.theme.TextGray
+import com.example.qr_prueba_gaby.presentation.ui.theme.textSecondary
 import com.example.qr_prueba_gaby.presentation.ui.common.OdooStatus
 
 @Composable
@@ -56,7 +56,7 @@ fun StatusHeader(
                     OdooStatus.OFFLINE   -> "Sin conexión"
                 },
                 fontSize = 12.sp,
-                color = TextGray
+                color = MaterialTheme.colorScheme.textSecondary
             )
         }
 
@@ -66,7 +66,7 @@ fun StatusHeader(
             Icon(
                 imageVector = Icons.Default.Settings,
                 contentDescription = "Ajustes",
-                tint = TextGray
+                tint = MaterialTheme.colorScheme.textSecondary
             )
         }
     }

@@ -33,3 +33,11 @@ val SecondaryBlue   = Color(0xFF414467)
 val LightGrayBg     = Color(0xFFFAFAFA)
 val InputBg         = Color(0xFFF0F2F5)
 val CardBg          = Color(0xFFF3F4F6)
+
+// ── Modo Oscuro (Material Design 3) — superficies neutras, misma identidad azul ──
+val DarkBackground     = Color(0xFF121212) // Fondo de las pantallas principales
+val DarkSurface        = Color(0xFF1E1E1E) // Tarjetas y superficies elevadas
+val DarkSurfaceVariant = Color(0xFF2E2E2E) // Inputs y superficies secundarias
+val DarkOnSurface      = Color(0xFFECEFF4) // Texto principal sobre fondo oscuro
+val DarkTextSecondary  = Color(0xFF9AA5B1) // Texto secundario sobre fondo oscuro
+val DarkOutline        = Color(0xFF3A4250) // Bordes en tema oscuro

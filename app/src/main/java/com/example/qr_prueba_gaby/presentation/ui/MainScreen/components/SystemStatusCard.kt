@@ -14,7 +14,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.qr_prueba_gaby.presentation.ui.common.OdooStatus
 import com.example.qr_prueba_gaby.presentation.ui.theme.MainBlue
+import com.example.qr_prueba_gaby.presentation.ui.theme.RedAccent
 import com.example.qr_prueba_gaby.presentation.ui.theme.TextGray
+import com.example.qr_prueba_gaby.presentation.ui.theme.YellowAccent
+import com.example.qr_prueba_gaby.presentation.ui.theme.textSecondary
 
 /**
  * Tarjeta de estado del sistema. Refleja el mismo [OdooStatus] que el
@@ -26,9 +29,9 @@ import com.example.qr_prueba_gaby.presentation.ui.theme.TextGray
 fun SystemStatusCard(odooStatus: OdooStatus) {
     val accent = when (odooStatus) {
         OdooStatus.VALID     -> MainBlue
-        OdooStatus.VERIFYING -> Color(0xFFF59E0B)
-        OdooStatus.INVALID   -> Color(0xFFDC2626)
-        OdooStatus.OFFLINE   -> Color(0xFF6B7280)
+        OdooStatus.VERIFYING -> YellowAccent
+        OdooStatus.INVALID   -> RedAccent
+        OdooStatus.OFFLINE   -> TextGray
     }
     val title = when (odooStatus) {
         OdooStatus.VALID     -> "Activo"
@@ -72,7 +75,7 @@ fun SystemStatusCard(odooStatus: OdooStatus) {
                         text = "ESTADO DEL SISTEMA",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextGray
+                        color = MaterialTheme.colorScheme.textSecondary
                     )
                     Text(
                         text = title,

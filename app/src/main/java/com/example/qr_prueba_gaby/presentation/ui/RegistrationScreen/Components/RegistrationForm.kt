@@ -37,7 +37,7 @@ fun RegistrationForm(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
             modifier = Modifier.padding(24.dp),
@@ -53,8 +53,8 @@ fun RegistrationForm(
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.Black,
-                    unfocusedTextColor = Color.Black,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                     focusedBorderColor = MainBlue,
                     unfocusedBorderColor = Color.Gray,
                     focusedLabelColor = MainBlue,
@@ -73,8 +73,8 @@ fun RegistrationForm(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.Black,
-                    unfocusedTextColor = Color.Black,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                     focusedBorderColor = MainBlue,
                     unfocusedBorderColor = Color.Gray,
                     focusedLabelColor = MainBlue,
@@ -97,8 +97,8 @@ fun RegistrationForm(
                         isError = error?.contains("placas") == true,
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.Black,
-                            unfocusedTextColor = Color.Black,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                             focusedBorderColor = MainBlue,
                             unfocusedBorderColor = Color.Gray,
                             focusedLabelColor = MainBlue,
@@ -135,7 +135,10 @@ fun RegistrationForm(
             Button(
                 onClick = { viewModel.register(onSuccess = onNavigateToQr) },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MainBlue),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MainBlue,
+                    contentColor = Color.White
+                ),
                 enabled = !isGenerating,
                 shape = RoundedCornerShape(16.dp)
             ) {

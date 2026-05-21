@@ -91,6 +91,9 @@ dependencies {
     // Autenticación Biométrica (Huella/FaceID)
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.fragment.ktx)
+
+    // Splash screen — previene flash blanco en arranque en frío
+    implementation(libs.androidx.core.splashscreen)
 }
 
 

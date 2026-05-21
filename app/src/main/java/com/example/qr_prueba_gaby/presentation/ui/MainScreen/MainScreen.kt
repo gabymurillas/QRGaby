@@ -47,6 +47,7 @@ fun MainScreen(viewModel: MainViewModel, onLogout: () -> Unit) {
     val pinError by viewModel.pinError.collectAsStateWithLifecycle()
     val userPin by viewModel.userPinFlow.collectAsStateWithLifecycle(null)
     val isSettingsVisible by viewModel.isSettingsVisible.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
 
     // Estado del re-escaneo del QR del Administrador (cambio de IP del servidor)
     val reprovisionSuccess by viewModel.reprovisionSuccess.collectAsStateWithLifecycle()
@@ -116,7 +117,7 @@ fun MainScreen(viewModel: MainViewModel, onLogout: () -> Unit) {
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = LightGrayBg
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
 
         // Diálogos de Seguridad
@@ -141,6 +142,8 @@ fun MainScreen(viewModel: MainViewModel, onLogout: () -> Unit) {
                 hasPin = userPin != null,
                 onTogglePin = { enabled -> viewModel.setPinEnabled(enabled) },
                 onChangePin = { viewModel.requestChangePin() },
+                themeMode = themeMode,
+                onThemeModeChange = { viewModel.setThemeMode(it) },
                 onDismiss = { viewModel.closeSettings() }
             )
         }
@@ -327,10 +330,14 @@ fun MainScreen(viewModel: MainViewModel, onLogout: () -> Unit) {
                     imageVector = Icons.Default.Sync,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
-                    tint = TextGray
+                    tint = MaterialTheme.colorScheme.textSecondary
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(text = "Actualizar servidor", fontSize = 12.sp, color = TextGray)
+                Text(
+                    text = "Actualizar servidor",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.textSecondary
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))

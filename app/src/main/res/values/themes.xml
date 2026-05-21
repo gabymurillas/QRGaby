@@ -2,4 +2,12 @@
 <resources>
 
     <style name="Theme.QRPRUEBAGABY" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Tema del splash: fondo blanco mientras el Compose renderiza por primera vez -->
+    <style name="Theme.QRPRUEBAGABY.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#FFFFFF</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/logouser</item>
+        <item name="postSplashScreenTheme">@style/Theme.QRPRUEBAGABY</item>
+    </style>
+
 </resources>

@@ -150,41 +150,50 @@ fun QrSyncScreen(
     }
 
     // ── Pantalla principal ───────────────────────────────────────────────────
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(LightGrayBg)
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        contentPadding = PaddingValues(top = 20.dp, bottom = 40.dp)
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        // ── Barra superior ─────────────────────────────────────────────────
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { onReset() }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Volver", tint = NavyBlue)
-                }
-                Text(
-                    text = "EscanQR",
-                    color = NavyBlue,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Black
+        // ── Barra superior FIJA: pegada al borde del teléfono, no se desplaza ──
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 24.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { onReset() }) {
+                Icon(
+                    Icons.Default.ArrowBack,
+                    contentDescription = "Volver",
+                    tint = MaterialTheme.colorScheme.secondary
                 )
             }
-            Spacer(modifier = Modifier.height(20.dp))
+            Text(
+                text = "EscanQR",
+                color = MaterialTheme.colorScheme.secondary,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Black
+            )
         }
 
+        // ── Contenido desplazable ───────────────────────────────────────────
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            contentPadding = PaddingValues(top = 12.dp, bottom = 40.dp)
+        ) {
         // ── Cabecera ────────────────────────────────────────────────────────
         item {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = "PORTAL DE ACCESO", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextGray, letterSpacing = 1.sp)
+                Text(text = "PORTAL DE ACCESO", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.textSecondary, letterSpacing = 1.sp)
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(text = "Muestra este código al\nadministrador", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = NavyBlue, textAlign = TextAlign.Center, lineHeight = 32.sp)
+                Text(text = "Muestra este código al\nadministrador", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.secondary, textAlign = TextAlign.Center, lineHeight = 32.sp)
                 Spacer(modifier = Modifier.height(12.dp))
-                Box(modifier = Modifier.width(40.dp).height(3.dp).clip(CircleShape).background(Color(0xFFD1D5DB)))
+                Box(modifier = Modifier.width(40.dp).height(3.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant))
             }
             Spacer(modifier = Modifier.height(30.dp))
         }
@@ -194,22 +203,22 @@ fun QrSyncScreen(
             Card(
                 modifier = Modifier.fillMaxWidth().shadow(elevation = 12.dp, shape = RoundedCornerShape(32.dp)),
                 shape = RoundedCornerShape(32.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
-                        modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(24.dp)).background(InputBg).padding(24.dp),
+                        modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         qrBitmap?.let {
                             Image(bitmap = it.asImageBitmap(), contentDescription = "QR", modifier = Modifier.fillMaxSize())
-                        } ?: CircularProgressIndicator(color = NavyBlue)
+                        } ?: CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    Text(text = userData?.u ?: "Usuario", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1F2937))
-                    Text(text = "C.I: V-${userData?.c ?: ""}", fontSize = 14.sp, color = TextGray)
+                    Text(text = userData?.u ?: "Usuario", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(text = "C.I: V-${userData?.c ?: ""}", fontSize = 14.sp, color = MaterialTheme.colorScheme.textSecondary)
 
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -220,7 +229,7 @@ fun QrSyncScreen(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Surface(
-                                color = Color(0xFFF1F5F9),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier.padding(bottom = 8.dp)
                             ) {
@@ -229,14 +238,14 @@ fun QrSyncScreen(
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.ExtraBold,
-                                    color = NavyBlue
+                                    color = MaterialTheme.colorScheme.secondary
                                 )
                             }
                             LinearProgressIndicator(
                                 progress = idProgress,
                                 modifier = Modifier.width(100.dp).height(4.dp).clip(CircleShape),
-                                color = NavyBlue,
-                                trackColor = Color(0xFFE2E8F0)
+                                color = MaterialTheme.colorScheme.secondary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
                             )
                         }
                     }
@@ -248,14 +257,14 @@ fun QrSyncScreen(
                             imageVector = if (decryptedId == null) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),
-                            tint = NavyBlue
+                            tint = MaterialTheme.colorScheme.secondary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = if (decryptedId == null) "VER ID TÉCNICO" else "OCULTAR ID",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = NavyBlue
+                            color = MaterialTheme.colorScheme.secondary
                         )
                     }
 
@@ -263,7 +272,7 @@ fun QrSyncScreen(
 
                     StatusBadge(
                         text = if (isActivated == true) "ACCESO ACTIVADO" else "ESPERANDO VALIDACIÓN",
-                        color = if (isActivated == true) Color(0xFF00C853) else NavyBlue,
+                        color = if (isActivated == true) Color(0xFF00C853) else MaterialTheme.colorScheme.secondary,
                         pulse = isActivated != true
                     )
                 }
@@ -284,7 +293,11 @@ fun QrSyncScreen(
                         .padding(bottom = 16.dp),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = when (provSuccess) {
+                        // En oscuro se usa una superficie neutra; el icono y el
+                        // texto (verde/rojo) siguen comunicando el resultado.
+                        containerColor = if (MaterialTheme.colorScheme.isDark) {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        } else when (provSuccess) {
                             true  -> Color(0xFFF0FDF4)  // verde muy claro
                             false -> Color(0xFFFFF1F2)  // rojo muy claro
                             null  -> Color(0xFFF8FAFC)
@@ -320,7 +333,7 @@ fun QrSyncScreen(
                                 color = when (provSuccess) {
                                     true  -> Color(0xFF16A34A)
                                     false -> Color(0xFFDC2626)
-                                    null  -> Color(0xFF6B7280)
+                                    null  -> MaterialTheme.colorScheme.textSecondary
                                 }
                             )
                         }
@@ -343,7 +356,8 @@ fun QrSyncScreen(
                 modifier = Modifier.fillMaxWidth().height(64.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isActivated == true) Color(0xFF16A34A) else NavyBlue
+                    containerColor = if (isActivated == true) Color(0xFF16A34A) else NavyBlue,
+                    contentColor = Color.White
                 ),
                 enabled = isActivated != true
             ) {
@@ -363,8 +377,9 @@ fun QrSyncScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             TextButton(onClick = { onReset() }, modifier = Modifier.padding(top = 8.dp)) {
-                Text("Volver a editar perfil", color = TextGray)
+                Text("Volver a editar perfil", color = MaterialTheme.colorScheme.textSecondary)
             }
+        }
         }
     }
 }

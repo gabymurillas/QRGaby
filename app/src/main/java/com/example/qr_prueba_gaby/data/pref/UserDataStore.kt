@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.qr_prueba_gaby.data.model.ThemeMode
 import com.example.qr_prueba_gaby.data.model.UserData
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -26,6 +27,8 @@ class UserDataStore(private val context: Context) {
         private val KEY_USER_PIN        = stringPreferencesKey("user_pin")
         // Provisionamiento por QR del Administrador
         private val KEY_URL_ENDPOINT    = stringPreferencesKey("url_endpoint")
+        // Preferencia de tema (claro / oscuro / sistema)
+        private val KEY_THEME_MODE      = stringPreferencesKey("theme_mode")
     }
 
     /** Flow que emite true si el usuario ya está registrado y activo. */
@@ -51,6 +54,15 @@ class UserDataStore(private val context: Context) {
     /** Flow con el endpoint recibido en el QR de aprovisionamiento, o null si aún no se recibió. */
     val urlEndpointFlow: Flow<String?> = context.dataStore.data.map { prefs ->
         prefs[KEY_URL_ENDPOINT]
+    }
+
+    /** Flow con el modo de tema elegido por el usuario (por defecto [ThemeMode.SYSTEM]). */
+    val themeModeFlow: Flow<ThemeMode> = context.dataStore.data.map { prefs ->
+        when (prefs[KEY_THEME_MODE]) {
+            ThemeMode.LIGHT.name -> ThemeMode.LIGHT
+            ThemeMode.DARK.name  -> ThemeMode.DARK
+            else                 -> ThemeMode.SYSTEM
+        }
     }
 
     /** Persiste los datos del usuario en DataStore. */
@@ -97,8 +109,24 @@ class UserDataStore(private val context: Context) {
         }
     }
 
-    /** Limpia todos los datos (para logout o reinstalación). */
+    /** Guarda el modo de tema seleccionado por el usuario. */
+    suspend fun saveThemeMode(mode: ThemeMode) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_THEME_MODE] = mode.name
+        }
+    }
+
+    /**
+     * Limpia todos los datos del usuario (para logout o reinstalación).
+     *
+     * La preferencia de tema NO es un dato de sesión: se conserva para que la
+     * apariencia elegida sobreviva al cierre de sesión.
+     */
     suspend fun clearAll() {
-        context.dataStore.edit { it.clear() }
+        context.dataStore.edit { prefs ->
+            val theme = prefs[KEY_THEME_MODE]
+            prefs.clear()
+            if (theme != null) prefs[KEY_THEME_MODE] = theme
+        }
     }
 }

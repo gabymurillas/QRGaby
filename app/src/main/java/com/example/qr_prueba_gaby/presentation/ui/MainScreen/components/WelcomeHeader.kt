@@ -1,6 +1,7 @@
 package com.example.qr_prueba_gaby.presentation.ui.MainScreen.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -10,7 +11,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.qr_prueba_gaby.presentation.ui.theme.MainBlue
-import com.example.qr_prueba_gaby.presentation.ui.theme.TextGray
+import com.example.qr_prueba_gaby.presentation.ui.theme.textSecondary
 
 @Composable
 fun WelcomeHeader(userName: String) {
@@ -19,7 +20,7 @@ fun WelcomeHeader(userName: String) {
             text = "BIENVENIDO DE NUEVO",
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = TextGray,
+            color = MaterialTheme.colorScheme.textSecondary,
             letterSpacing = 1.sp
         )
         Spacer(modifier = Modifier.height(8.dp))
